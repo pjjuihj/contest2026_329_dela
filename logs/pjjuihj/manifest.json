@@ -3,7 +3,7 @@
   "team_id": "contest2026_329_dela",
   "github_login": "pjjuihj",
   "generator": "claude-code-collector@1.2.0",
-  "updated_at": "2026-08-07T06:47:02.262Z",
+  "updated_at": "2026-08-07T06:55:56.534Z",
   "sessions": [
     {
       "session_id": "b071cbcc-21f2-4d43-a6c2-bec242cf3bdd",
@@ -57,9 +57,9 @@
       "session_id": "e426bfc9-84cc-4527-bc80-b0bcffa4afee",
       "tool": "claude-code",
       "started_at": "2026-08-06T04:17:57.955Z",
-      "last_event_at": "2026-08-07T06:47:02.252Z",
-      "event_count": 136,
-      "raw_event_count": 6095,
+      "last_event_at": "2026-08-07T06:55:56.522Z",
+      "event_count": 160,
+      "raw_event_count": 6151,
       "file_path": "logs/pjjuihj/2026-08-07/claude-code__e426bfc9-84cc-4527-bc80-b0bcffa4afee.jsonl",
       "collection_mode": "cli",
       "health": "ok",
