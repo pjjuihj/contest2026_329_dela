@@ -21,34 +21,102 @@ static uint32_t display_now_ms(void)
 static void display_create_ui(velawear_display_t *display)
 {
   lv_obj_t *screen = lv_screen_active();
-  lv_obj_t *title;
-  lv_obj_t *hint;
 
   lv_obj_set_style_bg_color(screen, lv_color_hex(0x07111f), 0);
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
-
-  title = lv_label_create(screen);
-  lv_label_set_text(title, "VelaWear");
-  lv_obj_set_style_text_color(title, lv_color_hex(0x67e8f9), 0);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 26);
 
   display->status_label = lv_label_create(screen);
   lv_label_set_text(display->status_label, "Agent starting");
   lv_obj_set_style_text_color(display->status_label,
                               lv_color_hex(0x94a3b8), 0);
-  lv_obj_align(display->status_label, LV_ALIGN_TOP_MID, 0, 72);
+  lv_obj_align(display->status_label, LV_ALIGN_TOP_MID, 0, 18);
+
+  display->page_title = lv_label_create(screen);
+  lv_label_set_text(display->page_title, "Watchface");
+  lv_obj_set_style_text_color(display->page_title,
+                              lv_color_hex(0x67e8f9), 0);
+  lv_obj_align(display->page_title, LV_ALIGN_TOP_MID, 0, 50);
 
   display->metrics_label = lv_label_create(screen);
   lv_label_set_text(display->metrics_label,
-                    "Motion: idle\nBattery: 100%\nHeart rate: --");
+                    "VelaWear\nStarting...");
   lv_obj_set_style_text_color(display->metrics_label,
                               lv_color_hex(0xf8fafc), 0);
   lv_obj_align(display->metrics_label, LV_ALIGN_CENTER, 0, 0);
 
-  hint = lv_label_create(screen);
-  lv_label_set_text(hint, "USB power  |  IMU online");
-  lv_obj_set_style_text_color(hint, lv_color_hex(0x64748b), 0);
-  lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -24);
+  display->page_hint = lv_label_create(screen);
+  lv_label_set_text(display->page_hint, "Swipe to change | 1/4");
+  lv_obj_set_style_text_color(display->page_hint, lv_color_hex(0x64748b), 0);
+  lv_obj_align(display->page_hint, LV_ALIGN_BOTTOM_MID, 0, -24);
+}
+
+static void display_render_page(velawear_display_t *display,
+                                const velawear_state_t *state)
+{
+  char title[32];
+  char content[256];
+  char hint[48];
+  time_t now;
+  struct tm tm_now;
+  const char *ble;
+  const char *sedentary;
+
+  if (display == NULL || state == NULL)
+    {
+      return;
+    }
+
+  ble = state->ble_connected ? "connected" : "disconnected";
+  sedentary = state->is_moving ? "moving" : "monitoring";
+  memset(&tm_now, 0, sizeof(tm_now));
+  now = time(NULL);
+  localtime_r(&now, &tm_now);
+
+  switch ((velawear_display_page_t)display->page_index)
+    {
+      case VELAWEAR_PAGE_WATCHFACE:
+        snprintf(title, sizeof(title), "Watchface");
+        snprintf(content, sizeof(content),
+                 "%02d:%02d:%02d\n%04d-%02d-%02d\nBattery: %lu%%\nBLE: %s",
+                 tm_now.tm_hour, tm_now.tm_min, tm_now.tm_sec,
+                 tm_now.tm_year + 1900, tm_now.tm_mon + 1, tm_now.tm_mday,
+                 (unsigned long)state->battery_level, ble);
+        break;
+
+      case VELAWEAR_PAGE_DATA:
+        snprintf(title, sizeof(title), "Data Panel");
+        snprintf(content, sizeof(content),
+                 "Moves today: %lu\nUptime: %lu s\nMotion: %s\nHeart rate: %s",
+                 (unsigned long)state->move_count_today,
+                 (unsigned long)state->uptime_seconds, sedentary,
+                 state->heart_rate > 0.0f ? "available" : "--");
+        break;
+
+      case VELAWEAR_PAGE_TASKS:
+        snprintf(title, sizeof(title), "Task List");
+        snprintf(content, sizeof(content),
+                 "- Move every 45 min\n- Stay hydrated\n- Check in with caregiver\n\nStatus: %s",
+                 state->is_moving ? "active" : "ready");
+        break;
+
+      case VELAWEAR_PAGE_SETTINGS:
+        snprintf(title, sizeof(title), "Settings");
+        snprintf(content, sizeof(content),
+                 "Theme: dark\nVibration: SOS\nBLE: %s\nDevice: SF32LB52",
+                 ble);
+        break;
+
+      default:
+        display->page_index = VELAWEAR_PAGE_WATCHFACE;
+        display_render_page(display, state);
+        return;
+    }
+
+  snprintf(hint, sizeof(hint), "Swipe to change | %u/4",
+           (unsigned int)display->page_index + 1);
+  lv_label_set_text(display->page_title, title);
+  lv_label_set_text(display->metrics_label, content);
+  lv_label_set_text(display->page_hint, hint);
 }
 
 int display_manager_init(velawear_display_t *display,
@@ -142,12 +210,50 @@ void display_manager_tick(velawear_display_t *display)
                "Motion: %s\nBattery: %lu%%%s\nHeart rate: %s",
                motion, (unsigned long)state.battery_level,
                state.is_charging ? " (charging)" : "", heart_rate);
-      lv_label_set_text(display->metrics_label, metrics);
+      display_render_page(display, &state);
       lv_label_set_text(display->status_label, "Agent running");
       display->last_update_ms = now;
     }
 
   lv_timer_handler();
+}
+
+
+void display_manager_set_page(velawear_display_t *display,
+                              velawear_display_page_t page)
+{
+  if (display == NULL || !display->initialized || page >= VELAWEAR_PAGE_COUNT)
+    {
+      return;
+    }
+
+  display->page_index = (uint8_t)page;
+  display->last_update_ms = 0;
+}
+
+void display_manager_next_page(velawear_display_t *display)
+{
+  if (display == NULL || !display->initialized)
+    {
+      return;
+    }
+
+  display_manager_set_page(display,
+                           (velawear_display_page_t)
+                           ((display->page_index + 1) % VELAWEAR_PAGE_COUNT));
+}
+
+void display_manager_previous_page(velawear_display_t *display)
+{
+  if (display == NULL || !display->initialized)
+    {
+      return;
+    }
+
+  display_manager_set_page(display,
+                           (velawear_display_page_t)
+                           ((display->page_index + VELAWEAR_PAGE_COUNT - 1) %
+                            VELAWEAR_PAGE_COUNT));
 }
 
 void display_manager_show_alert(velawear_display_t *display,
