@@ -42,6 +42,14 @@ static int velawear_watchdog_start_software(velawear_agent_t *agent);
 static int velawear_watchdog_start(velawear_agent_t *agent);
 static void velawear_watchdog_stop(velawear_agent_t *agent);
 static void velawear_watchdog_ping(velawear_agent_t *agent);
+static void velawear_set_degradation_mode(velawear_agent_t *agent,
+                                             int mode,
+                                             const char *reason);
+static int velawear_retry_imu(velawear_agent_t *agent);
+static int velawear_retry_audio(velawear_agent_t *agent);
+static void velawear_set_power_mode(velawear_agent_t *agent,
+                                    int mode,
+                                    const char *reason);
 static int velawear_event_handler(velawear_event_t *event, void *context);
 static int velawear_log_action_handler(velawear_action_t *action,
                                        void *context);
@@ -78,6 +86,10 @@ int main(int argc, char *argv[])
   g_agent.running = false;
   g_agent.watchdog_fd = -1;
   g_agent.power_mode = VELAWEAR_POWER_IDLE;
+  g_agent.operation_mode = VELAWEAR_MODE_ONLINE;
+  g_agent.imu_available = false;
+  g_agent.audio_available = false;
+  g_agent.ble_available = false;
 
   /* Set up signal handler */
 
@@ -109,11 +121,30 @@ int main(int argc, char *argv[])
    * producer thread so this task remains the single queue consumer. */
   {
     bool falltest_sent = false;
+    uint32_t last_activity_ms = velawear_now_ms();
 
     while (g_agent.running)
       {
         velawear_event_t event;
         int event_ret;
+        int wait_ms;
+
+        if (g_agent.power_mode == VELAWEAR_POWER_DEEP_SLEEP)
+          {
+            wait_ms = 500;
+          }
+        else if (g_agent.power_mode == VELAWEAR_POWER_LIGHT_SLEEP)
+          {
+            wait_ms = 500;
+          }
+        else if (g_agent.power_mode == VELAWEAR_POWER_IDLE)
+          {
+            wait_ms = 2000;
+          }
+        else
+          {
+            wait_ms = 1000;
+          }
 
         if (falltest && !falltest_sent)
           {
@@ -133,9 +164,15 @@ int main(int argc, char *argv[])
             falltest_sent = true;
           }
 
-        event_ret = event_manager_pop(&g_agent.events, &event, 1000);
+        event_ret = event_manager_pop(&g_agent.events, &event, wait_ms);
         if (event_ret == VELAWEAR_OK)
           {
+            if (event.type != VELAWEAR_EVENT_IMU_DATA)
+              {
+                last_activity_ms = velawear_now_ms();
+                velawear_set_power_mode(&g_agent, VELAWEAR_POWER_ACTIVE,
+                                        "event received");
+              }
             event_ret = event_manager_dispatch(&g_agent.events, &event);
             if (event_ret < 0)
               {
@@ -159,8 +196,31 @@ int main(int argc, char *argv[])
                    "[VelaWear] Event wait failed: %d\n", event_ret);
           }
 
-        /* LVGL initialization and timer handling stay on this task. */
-        display_manager_tick(&g_agent.display);
+        {
+          uint32_t idle_ms = velawear_now_ms() - last_activity_ms;
+
+          if (idle_ms >= 60000)
+            {
+              velawear_set_power_mode(&g_agent, VELAWEAR_POWER_DEEP_SLEEP,
+                                      "60 seconds without user event");
+            }
+          else if (idle_ms >= 30000)
+            {
+              velawear_set_power_mode(&g_agent, VELAWEAR_POWER_LIGHT_SLEEP,
+                                      "30 seconds without user event");
+            }
+          else if (idle_ms >= 10000)
+            {
+              velawear_set_power_mode(&g_agent, VELAWEAR_POWER_IDLE,
+                                      "10 seconds without user event");
+            }
+        }
+
+        /* Light/deep sleep stop display refresh; the next event wakes it. */
+        if (g_agent.power_mode <= VELAWEAR_POWER_IDLE)
+          {
+            display_manager_tick(&g_agent.display);
+          }
         velawear_watchdog_ping(&g_agent);
       }
   }
@@ -187,6 +247,80 @@ static uint32_t velawear_now_ms(void)
     }
 
   return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+static void velawear_set_degradation_mode(velawear_agent_t *agent,
+                                             int mode,
+                                             const char *reason)
+{
+  const char *name;
+
+  if (agent == NULL || agent->operation_mode == mode)
+    {
+      return;
+    }
+
+  agent->operation_mode = mode;
+  if (mode == VELAWEAR_MODE_ONLINE)
+    {
+      name = "online";
+    }
+  else if (mode == VELAWEAR_MODE_INDEPENDENT)
+    {
+      name = "independent";
+    }
+  else
+    {
+      name = "survival";
+    }
+
+  syslog(LOG_WARNING, "[Degrade] mode=%s reason=%s\n",
+         name, reason ? reason : "unspecified");
+}
+
+static int velawear_retry_imu(velawear_agent_t *agent)
+{
+  int ret;
+
+  ret = imu_sensor_init(&agent->imu);
+  if (ret < 0)
+    {
+      usleep(20000);
+      ret = imu_sensor_init(&agent->imu);
+    }
+
+  agent->imu_available = ret == VELAWEAR_OK;
+  return ret;
+}
+
+static int velawear_retry_audio(velawear_agent_t *agent)
+{
+  int ret;
+
+  ret = audio_sensor_init(&agent->audio);
+  if (ret < 0)
+    {
+      usleep(20000);
+      ret = audio_sensor_init(&agent->audio);
+    }
+
+  agent->audio_available = ret == VELAWEAR_OK;
+  return ret;
+}
+
+static void velawear_set_power_mode(velawear_agent_t *agent,
+                                    int mode,
+                                    const char *reason)
+{
+  if (agent == NULL || agent->power_mode == mode)
+    {
+      return;
+    }
+
+  agent->power_mode = mode;
+  state_manager_update_power_mode(&agent->state_mgr, mode);
+  syslog(LOG_INFO, "[Power] mode=%d reason=%s\n",
+         mode, reason ? reason : "policy");
 }
 
 static void velawear_watchdog_ping(velawear_agent_t *agent)
@@ -462,18 +596,22 @@ static int velawear_init(velawear_agent_t *agent)
 
   /* Initialize sensor drivers */
 
-  ret = imu_sensor_init(&agent->imu);
+  ret = velawear_retry_imu(agent);
   if (ret < 0)
     {
-      syslog(LOG_WARNING, "[VelaWear] IMU sensor init failed: %d\n", ret);
-      /* Non-fatal: continue without IMU */
+      syslog(LOG_WARNING, "[VelaWear] IMU sensor init failed after retry: %d\n",
+             ret);
+      velawear_set_degradation_mode(agent, VELAWEAR_MODE_INDEPENDENT,
+                                     "imu unavailable");
     }
 
-  ret = audio_sensor_init(&agent->audio);
+  ret = velawear_retry_audio(agent);
   if (ret < 0)
     {
-      syslog(LOG_WARNING, "[VelaWear] Audio sensor init failed: %d\n", ret);
-      /* Non-fatal: continue without audio */
+      syslog(LOG_WARNING,
+             "[VelaWear] Audio sensor init failed after retry: %d\n", ret);
+      syslog(LOG_WARNING,
+             "[Degrade] Audio unavailable; vibration-only actions remain\n");
     }
 
   /* Initialize LLM client */
@@ -482,7 +620,13 @@ static int velawear_init(velawear_agent_t *agent)
   if (ret < 0)
     {
       syslog(LOG_WARNING, "[VelaWear] LLM init failed: %d\n", ret);
-      /* Non-fatal: continue without LLM */
+      velawear_set_degradation_mode(agent, VELAWEAR_MODE_INDEPENDENT,
+                                     "llm unavailable");
+    }
+  else if (!agent->llm.connected)
+    {
+      velawear_set_degradation_mode(agent, VELAWEAR_MODE_INDEPENDENT,
+                                     "cloud disconnected");
     }
 
   ret = event_manager_register_handler(&agent->events,
@@ -710,10 +854,15 @@ static int velawear_send_ble_action_handler(velawear_action_t *action,
   state = state_manager_get_state(&agent->state_mgr);
   if (!state.ble_connected)
     {
+      agent->ble_available = false;
+      velawear_set_degradation_mode(agent, VELAWEAR_MODE_INDEPENDENT,
+                                     "ble disconnected");
       syslog(LOG_WARNING,
              "[Action] BLE emergency notification deferred (not connected)\n");
       return VELAWEAR_OK;
     }
+
+  agent->ble_available = true;
 
   /* The BLE transport is not integrated yet; retain a deterministic log. */
   syslog(LOG_WARNING, "[Action] BLE emergency notification: %s\n",

@@ -50,6 +50,12 @@
 #define VELAWEAR_POWER_LIGHT_SLEEP  2
 #define VELAWEAR_POWER_DEEP_SLEEP   3
 
+/* Runtime degradation modes */
+#define VELAWEAR_MODE_ONLINE       0
+#define VELAWEAR_MODE_INDEPENDENT  1
+#define VELAWEAR_MODE_SURVIVAL     2
+
+
 /* Event types */
 
 #define VELAWEAR_EVENT_NONE         0
@@ -244,6 +250,10 @@ typedef struct velawear_agent
 {
   volatile sig_atomic_t running;
   int power_mode;
+  int operation_mode;
+  bool imu_available;
+  bool audio_available;
+  bool ble_available;
   velawear_config_t config;
   velawear_state_t state;
   velawear_state_mgr_t state_mgr;
