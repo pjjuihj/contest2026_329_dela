@@ -16,6 +16,11 @@
 #include <errno.h>
 #include <signal.h>
 #include <syslog.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <time.h>
+
+#include <nuttx/timers/watchdog.h>
 
 #include "velawear.h"
 #include "audio_hw_test.h"
@@ -26,11 +31,17 @@ static velawear_agent_t g_agent;
 
 /* Forward declarations */
 
+static uint32_t velawear_now_ms(void);
 static int velawear_init(velawear_agent_t *agent);
 static int velawear_start(velawear_agent_t *agent);
 static void velawear_cleanup(velawear_agent_t *agent);
 static void velawear_signal_handler(int signo);
 static void *velawear_imu_thread(void *context);
+static void *velawear_watchdog_thread(void *context);
+static int velawear_watchdog_start_software(velawear_agent_t *agent);
+static int velawear_watchdog_start(velawear_agent_t *agent);
+static void velawear_watchdog_stop(velawear_agent_t *agent);
+static void velawear_watchdog_ping(velawear_agent_t *agent);
 static int velawear_event_handler(velawear_event_t *event, void *context);
 static int velawear_log_action_handler(velawear_action_t *action,
                                        void *context);
@@ -65,6 +76,7 @@ int main(int argc, char *argv[])
 
   memset(&g_agent, 0, sizeof(velawear_agent_t));
   g_agent.running = false;
+  g_agent.watchdog_fd = -1;
   g_agent.power_mode = VELAWEAR_POWER_IDLE;
 
   /* Set up signal handler */
@@ -149,6 +161,7 @@ int main(int argc, char *argv[])
 
         /* LVGL initialization and timer handling stay on this task. */
         display_manager_tick(&g_agent.display);
+        velawear_watchdog_ping(&g_agent);
       }
   }
 
@@ -163,6 +176,159 @@ int main(int argc, char *argv[])
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+static uint32_t velawear_now_ms(void)
+{
+  struct timespec ts;
+
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+    {
+      return (uint32_t)time(NULL) * 1000;
+    }
+
+  return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+static void velawear_watchdog_ping(velawear_agent_t *agent)
+{
+  if (agent == NULL)
+    {
+      return;
+    }
+
+  agent->watchdog_last_main_ms = velawear_now_ms();
+  if (agent->watchdog_active && agent->watchdog_fd >= 0)
+    {
+      if (ioctl(agent->watchdog_fd, WDIOC_KEEPALIVE, 0) < 0)
+        {
+          syslog(LOG_WARNING, "[Watchdog] Keepalive failed: %d\n", errno);
+        }
+    }
+}
+
+static void *velawear_watchdog_thread(void *context)
+{
+  velawear_agent_t *agent = (velawear_agent_t *)context;
+  bool reported_stall = false;
+
+  syslog(LOG_INFO, "[Watchdog] Software monitor started\n");
+  while (agent->running)
+    {
+      uint32_t age = velawear_now_ms() - agent->watchdog_last_main_ms;
+
+      if (age > 5000 && !reported_stall)
+        {
+          syslog(LOG_ERR,
+                 "[Watchdog] Main loop heartbeat stalled (%lu ms)\n",
+                 (unsigned long)age);
+          reported_stall = true;
+        }
+      else if (age <= 5000)
+        {
+          reported_stall = false;
+        }
+
+      usleep(1000000);
+    }
+
+  syslog(LOG_INFO, "[Watchdog] Software monitor stopped\n");
+  return NULL;
+}
+
+static int velawear_watchdog_start_software(velawear_agent_t *agent)
+{
+  int ret;
+
+  agent->watchdog_last_main_ms = velawear_now_ms();
+  ret = pthread_create(&agent->watchdog_thread, NULL,
+                       velawear_watchdog_thread, agent);
+  if (ret != 0)
+    {
+      syslog(LOG_WARNING, "[Watchdog] Software monitor start failed: %d\n",
+             ret);
+      return ret;
+    }
+
+  agent->watchdog_thread_started = true;
+  return VELAWEAR_OK;
+}
+
+static int velawear_watchdog_start(velawear_agent_t *agent)
+{
+  int timeout_ms = 5000;
+  int ret;
+
+  if (agent == NULL)
+    {
+      return VELAWEAR_ERR_INVAL;
+    }
+
+  agent->watchdog_fd = open("/dev/watchdog0", O_RDWR);
+  if (agent->watchdog_fd < 0)
+    {
+      syslog(LOG_WARNING, "[Watchdog] /dev/watchdog0 unavailable: %d\n",
+             errno);
+      ret = velawear_watchdog_start_software(agent);
+      if (ret == VELAWEAR_OK)
+        {
+          syslog(LOG_INFO, "[Watchdog] Software-only monitor enabled\n");
+        }
+      return VELAWEAR_OK;
+    }
+
+  if (ioctl(agent->watchdog_fd, WDIOC_SETTIMEOUT, timeout_ms) < 0 ||
+      ioctl(agent->watchdog_fd, WDIOC_START, 0) < 0)
+    {
+      syslog(LOG_WARNING, "[Watchdog] Hardware watchdog start failed: %d\n",
+             errno);
+      close(agent->watchdog_fd);
+      agent->watchdog_fd = -1;
+      ret = velawear_watchdog_start_software(agent);
+      if (ret == VELAWEAR_OK)
+        {
+          syslog(LOG_INFO, "[Watchdog] Software-only monitor enabled\n");
+        }
+      return VELAWEAR_OK;
+    }
+
+  agent->watchdog_active = true;
+  ret = velawear_watchdog_start_software(agent);
+  if (ret != VELAWEAR_OK)
+    {
+      ioctl(agent->watchdog_fd, WDIOC_STOP, 0);
+      close(agent->watchdog_fd);
+      agent->watchdog_fd = -1;
+      agent->watchdog_active = false;
+      return VELAWEAR_OK;
+    }
+
+  syslog(LOG_INFO, "[Watchdog] Hardware watchdog started (%d ms)\n",
+         timeout_ms);
+  return VELAWEAR_OK;
+}
+
+static void velawear_watchdog_stop(velawear_agent_t *agent)
+{
+  if (agent == NULL)
+    {
+      return;
+    }
+
+  if (agent->watchdog_thread_started)
+    {
+      pthread_join(agent->watchdog_thread, NULL);
+      agent->watchdog_thread_started = false;
+    }
+
+  if (agent->watchdog_active && agent->watchdog_fd >= 0)
+    {
+      ioctl(agent->watchdog_fd, WDIOC_STOP, 0);
+      close(agent->watchdog_fd);
+    }
+
+  agent->watchdog_fd = -1;
+  agent->watchdog_active = false;
+}
 
 static void *velawear_imu_thread(void *context)
 {
@@ -399,6 +565,13 @@ static int velawear_start(velawear_agent_t *agent)
   /* Mark agent as running before starting the sensor producer. */
 
   agent->running = true;
+  ret = velawear_watchdog_start(agent);
+  if (ret < 0)
+    {
+      agent->running = false;
+      return ret;
+    }
+
   if (agent->imu.initialized)
     {
       ret = pthread_create(&agent->imu_thread, NULL,
@@ -420,6 +593,7 @@ static void velawear_cleanup(velawear_agent_t *agent)
   /* Stop subsystems in reverse order */
 
   agent->running = false;
+  velawear_watchdog_stop(agent);
   if (agent->imu_thread_started)
     {
       pthread_join(agent->imu_thread, NULL);

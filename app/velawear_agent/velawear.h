@@ -256,6 +256,11 @@ typedef struct velawear_agent
   velawear_audio_t audio;
   pthread_t imu_thread;
   bool imu_thread_started;
+  int watchdog_fd;
+  bool watchdog_active;
+  pthread_t watchdog_thread;
+  bool watchdog_thread_started;
+  volatile uint32_t watchdog_last_main_ms;
 } velawear_agent_t;
 
 /****************************************************************************
