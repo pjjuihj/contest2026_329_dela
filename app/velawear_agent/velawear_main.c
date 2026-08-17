@@ -74,6 +74,11 @@ int main(int argc, char *argv[])
       return velawear_audio_hw_test();
     }
 
+  if (argc > 1 && strcmp(argv[1], "beep") == 0)
+    {
+      return velawear_speaker_alert(500, 0);
+    }
+
   syslog(LOG_INFO, "[VelaWear] Agent starting...\n");
   if (argc > 1 && strcmp(argv[1], "mic") == 0)
     {
@@ -812,14 +817,23 @@ static int velawear_log_action_handler(velawear_action_t *action,
 static int velawear_vibrate_action_handler(velawear_action_t *action,
                                             void *context)
 {
+  int ret;
+
   if (action == NULL)
     {
       return VELAWEAR_ERR_INVAL;
     }
 
-  /* Hardware PWM/GPIO wiring is board-specific; keep the action observable
-   * until the motor pin is assigned in the board configuration. */
-  syslog(LOG_INFO, "[Action] Vibrate: duration=%dms, pattern=%d\n",
+  ret = velawear_speaker_alert(action->params.vibrate.duration_ms,
+                                action->params.vibrate.pattern);
+  if (ret < 0)
+    {
+      syslog(LOG_WARNING,
+             "[Action] Speaker alert failed; no motor hardware is present\n");
+      return VELAWEAR_OK;
+    }
+
+  syslog(LOG_INFO, "[Action] Speaker alert: duration=%dms, pattern=%d\n",
          action->params.vibrate.duration_ms,
          action->params.vibrate.pattern);
   return VELAWEAR_OK;

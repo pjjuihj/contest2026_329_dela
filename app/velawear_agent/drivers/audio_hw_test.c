@@ -18,11 +18,16 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <sched.h>
 #include <syslog.h>
 
 #include "bf0_hal.h"
 #include "audio_hw_test.h"
 
+
+/* Present in the HAL implementation; absent from this vendored HAL header. */
+extern HAL_StatusTypeDef HAL_AUDCODEC_Config_ADCPath_Volume(
+  AUDCODEC_HandleTypeDef *hacodec, int channel, int volume);
 #define AUDIO_TEST_RATE       16000
 #define AUDIO_TEST_SECONDS    2
 #define AUDIO_TEST_SAMPLES    (AUDIO_TEST_RATE * AUDIO_TEST_SECONDS)
@@ -87,6 +92,112 @@ static void audio_adc_stop(AUDCODEC_HandleTypeDef *codec)
   HAL_AUDCODEC_Close_Analog_ADCPath();
 }
 
+static bool g_mic_only;
+
+int velawear_mic_hw_test(void)
+{
+  int ret;
+  g_mic_only = true;
+  ret = velawear_audio_hw_test();
+  g_mic_only = false;
+  return ret;
+}
+int velawear_speaker_alert(int duration_ms, int pattern)
+{
+  AUDCODEC_HandleTypeDef codec;
+  AUDCODEC_DACCfgTypeDef dac_cfg;
+  uint32_t samples;
+  uint32_t i;
+  int ret = HAL_OK;
+
+  if (duration_ms <= 0)
+    {
+      return -1;
+    }
+
+  memset(&codec, 0, sizeof(codec));
+  memset(&dac_cfg, 0, sizeof(dac_cfg));
+  codec.Instance = hwp_audcodec;
+  codec.Init.dac_cfg.opmode = 1;
+
+  syslog(LOG_INFO, "[AudioAlert] begin (%d ms, pattern=%d)\n",
+         duration_ms, pattern);
+  HAL_PMU_EnableAudio(1);
+  HAL_RCC_EnableModule(RCC_MOD_AUDCODEC);
+  ret = HAL_AUDCODEC_Init(&codec);
+  if (ret != HAL_OK)
+    {
+      goto cleanup_power;
+    }
+
+  dac_cfg.opmode = 1;
+  dac_cfg.dac_clk = (AUDCODE_DAC_CLK_CONFIG_TYPE *)&g_dac_clock;
+  ret = HAL_AUDCODEC_Config_TChanel(&codec, 0, &dac_cfg);
+  if (ret != HAL_OK)
+    {
+      goto cleanup_codec;
+    }
+
+  __HAL_AUDCODEC_DAC_ENABLE(&codec);
+  ret = HAL_AUDCODEC_Config_DACPath_Volume(&codec, 0, 0);
+  if (ret != HAL_OK)
+    {
+      goto cleanup_dac;
+    }
+
+  HAL_AUDCODEC_Config_DACPath(&codec, 1);
+  HAL_TURN_ON_PLL();
+  ret = HAL_AUDCODEC_Config_Analog_DACPath(
+          (AUDCODE_DAC_CLK_CONFIG_TYPE *)&g_dac_clock);
+  if (ret != HAL_OK)
+    {
+      goto cleanup_dac;
+    }
+
+  HAL_AUDCODEC_Config_DACPath(&codec, 0);
+  audio_pa_set(true);
+  HAL_Delay_us(30000);
+
+  samples = (uint32_t)(((uint64_t)AUDIO_TEST_RATE * duration_ms) / 1000);
+  for (i = 0; i < samples; i++)
+    {
+      uint32_t guard = 0;
+      uint32_t elapsed_ms = (i * 1000U) / AUDIO_TEST_RATE;
+      uint32_t phase_ms = elapsed_ms % 1000U;
+      bool audible = pattern != 8 ||
+                     phase_ms < 120U ||
+                     (phase_ms >= 200U && phase_ms < 320U) ||
+                     (phase_ms >= 400U && phase_ms < 520U);
+
+      while (audio_dac_fifo_count() >= AUDIO_FIFO_WATERMARK &&
+             guard++ < 10)
+        {
+          HAL_Delay_us(20);
+        }
+
+      if (audio_dac_fifo_count() < AUDIO_FIFO_WATERMARK)
+        {
+          hwp_audcodec->DAC_CH0_ENTRY =
+            audible ? (uint16_t)g_tone[i & 31] : 0;
+        }
+    }
+
+  audio_pa_set(false);
+  syslog(LOG_INFO, "[AudioAlert] tone feed complete\n");
+
+cleanup_dac:
+  audio_dac_stop(&codec);
+cleanup_codec:
+  HAL_AUDCODEC_DeInit(&codec);
+  HAL_TURN_OFF_PLL();
+cleanup_power:
+  HAL_PMU_EnableAudio(0);
+  syslog(ret == HAL_OK ? LOG_INFO : LOG_WARNING,
+         "[AudioAlert] speaker alert %s (%d ms, pattern=%d)\n",
+         ret == HAL_OK ? "played" : "failed", duration_ms, pattern);
+  return ret == HAL_OK ? 0 : -1;
+}
+
 int velawear_audio_hw_test(void)
 {
   AUDCODEC_HandleTypeDef codec;
@@ -96,6 +207,8 @@ int velawear_audio_hw_test(void)
   int i;
 
   memset(&codec, 0, sizeof(codec));
+  memset(&dac_cfg, 0, sizeof(dac_cfg));
+  memset(&adc_cfg, 0, sizeof(adc_cfg));
   codec.Instance = hwp_audcodec;
   codec.Init.dac_cfg.opmode = 1;
   codec.Init.adc_cfg.opmode = 1;
@@ -113,6 +226,12 @@ int velawear_audio_hw_test(void)
     }
 
   dac_cfg.opmode = 1;
+  adc_cfg.opmode = 1;
+  if (g_mic_only)
+    {
+      HAL_TURN_ON_PLL();
+      goto adc_start;
+    }
   dac_cfg.dac_clk = (AUDCODE_DAC_CLK_CONFIG_TYPE *)&g_dac_clock;
   ret = HAL_AUDCODEC_Config_TChanel(&codec, 0, &dac_cfg);
   if (ret != HAL_OK)
@@ -122,7 +241,13 @@ int velawear_audio_hw_test(void)
     }
 
   __HAL_AUDCODEC_DAC_ENABLE(&codec);
-  HAL_AUDCODEC_Config_DACPath(&codec, 0);
+  ret = HAL_AUDCODEC_Config_DACPath_Volume(&codec, 0, 0);
+  if (ret != HAL_OK)
+    {
+      syslog(LOG_ERR, "[AudioTest] DAC volume config failed: %d\\n", ret);
+      goto cleanup;
+    }
+  HAL_AUDCODEC_Config_DACPath(&codec, 1);
   HAL_TURN_ON_PLL();
   ret = HAL_AUDCODEC_Config_Analog_DACPath(
           (AUDCODE_DAC_CLK_CONFIG_TYPE *)&g_dac_clock);
@@ -132,26 +257,38 @@ int velawear_audio_hw_test(void)
       goto cleanup;
     }
 
+  HAL_AUDCODEC_Config_DACPath(&codec, 0);
   audio_pa_set(true);
   syslog(LOG_INFO, "[AudioTest] SPEAKER: 1 kHz tone for %d seconds\n",
          AUDIO_TEST_SECONDS);
 
-  for (i = 0; i < AUDIO_TEST_SAMPLES; i++)
-    {
-      uint32_t guard = 0;
-      while (audio_dac_fifo_count() >= AUDIO_FIFO_WATERMARK &&
-             guard++ < 100)
-        {
-          usleep(20);
-        }
-      hwp_audcodec->DAC_CH0_ENTRY = (uint16_t)g_tone[i & 31];
-    }
+  {
+    uint32_t queued = 0;
+    for (i = 0; i < AUDIO_TEST_SAMPLES; i++)
+      {
+        uint32_t guard = 0;
+        while (audio_dac_fifo_count() >= AUDIO_FIFO_WATERMARK &&
+               guard++ < 10)
+          {
+            HAL_Delay_us(20);
+          }
+        if (audio_dac_fifo_count() < AUDIO_FIFO_WATERMARK)
+          {
+            hwp_audcodec->DAC_CH0_ENTRY = (uint16_t)g_tone[i & 31];
+            queued++;
+          }
+        if ((i & 0xff) == 0) sched_yield();
+      }
+    syslog(LOG_INFO, "[AudioTest] SPEAKER: queued=%lu/%d\n",
+           (unsigned long)queued, AUDIO_TEST_SAMPLES);
+  }
 
   audio_pa_set(false);
   audio_dac_stop(&codec);
   syslog(LOG_INFO, "[AudioTest] SPEAKER: tone feed complete\n");
 
   adc_cfg.opmode = 1;
+adc_start:
   adc_cfg.adc_clk = (AUDCODE_ADC_CLK_CONFIG_TYPE *)&g_adc_clock;
   ret = HAL_AUDCODEC_Config_RChanel(&codec, 0, &adc_cfg);
   if (ret != HAL_OK)
@@ -160,20 +297,21 @@ int velawear_audio_hw_test(void)
       goto cleanup;
     }
 
-  HAL_AUDCODEC_Config_ADCPath_Volume(&codec, 0, 0);
-  ret = HAL_AUDCODEC_Config_Analog_ADCPath(
-          (AUDCODE_ADC_CLK_CONFIG_TYPE *)&g_adc_clock);
+  ret = HAL_AUDCODEC_Config_ADCPath_Volume(&codec, 0, 12);
   if (ret != HAL_OK)
     {
-      syslog(LOG_ERR, "[AudioTest] analog ADC path failed: %d\n", ret);
+      syslog(LOG_ERR, "[AudioTest] ADC gain config failed: %d\n", ret);
       goto cleanup;
     }
-
+  HAL_AUDCODEC_Config_Analog_ADCPath((AUDCODE_ADC_CLK_CONFIG_TYPE *)&g_adc_clock);
   __HAL_AUDCODEC_ADC_ENABLE(&codec);
   {
     int32_t min_sample = INT32_MAX;
     int32_t max_sample = INT32_MIN;
     uint64_t sum_abs = 0;
+    uint32_t count_abs_1000 = 0;
+    uint32_t count_abs_5000 = 0;
+    uint32_t peak_abs = 0;
     uint32_t samples = 0;
     uint32_t idle_loops = 0;
 
@@ -184,7 +322,7 @@ int velawear_audio_hw_test(void)
       {
         if (audio_adc_fifo_count() == 0)
           {
-            usleep(100);
+            HAL_Delay_us(100);
             idle_loops++;
             continue;
           }
@@ -199,7 +337,22 @@ int velawear_audio_hw_test(void)
             {
               max_sample = sample;
             }
-          sum_abs += (uint32_t)(sample < 0 ? -sample : sample);
+          {
+            uint32_t abs_sample = (uint32_t)(sample < 0 ? -sample : sample);
+            sum_abs += abs_sample;
+            if (abs_sample > peak_abs)
+              {
+                peak_abs = abs_sample;
+              }
+            if (abs_sample >= 1000)
+              {
+                count_abs_1000++;
+              }
+            if (abs_sample >= 5000)
+              {
+                count_abs_5000++;
+              }
+          }
           samples++;
         }
       }
@@ -214,6 +367,10 @@ int velawear_audio_hw_test(void)
                "[AudioTest] MICROPHONE: samples=%lu min=%ld max=%ld avg_abs=%lu\n",
                (unsigned long)samples, (long)min_sample, (long)max_sample,
                (unsigned long)(sum_abs / samples));
+        syslog(LOG_INFO,
+               "[AudioTest] MICROPHONE: peak_abs=%lu above_1000=%lu above_5000=%lu\n",
+               (unsigned long)peak_abs, (unsigned long)count_abs_1000,
+               (unsigned long)count_abs_5000);
       }
   }
 
