@@ -32,12 +32,50 @@ static bool fall_detected_condition(velawear_state_t *state,
 
 static int fall_detected_action(velawear_state_t *state, void *context)
 {
-  syslog(LOG_WARNING, "[Decision] FALL DETECTED! Sending emergency alert\n");
+  velawear_engine_t *engine = (velawear_engine_t *)context;
+  velawear_action_t action;
+  int ret;
 
-  /* TODO: Send emergency BLE notification */
-  /* TODO: Show emergency UI */
-  /* TODO: Vibrate motor */
+  if (engine == NULL || engine->actions == NULL)
+    {
+      return VELAWEAR_ERR_INVAL;
+    }
 
+  memset(&action, 0, sizeof(action));
+  action.type = VELAWEAR_ACTION_SHOW_UI;
+  action.priority = VELAWEAR_PRIORITY_CRITICAL;
+  snprintf(action.params.display.text, sizeof(action.params.display.text),
+           "FALL DETECTED!\nPlease check the wearer.");
+  ret = action_manager_execute(engine->actions, &action);
+  if (ret < 0)
+    {
+      return ret;
+    }
+
+  memset(&action, 0, sizeof(action));
+  action.type = VELAWEAR_ACTION_VIBRATE;
+  action.priority = VELAWEAR_PRIORITY_CRITICAL;
+  action.params.vibrate.duration_ms = 3000;
+  action.params.vibrate.pattern = 8; /* SOS: ... --- ... */
+  ret = action_manager_execute(engine->actions, &action);
+  if (ret < 0)
+    {
+      return ret;
+    }
+
+  memset(&action, 0, sizeof(action));
+  action.type = VELAWEAR_ACTION_SEND_BLE;
+  action.priority = VELAWEAR_PRIORITY_CRITICAL;
+  snprintf(action.params.ble.data, sizeof(action.params.ble.data),
+           "FALL DETECTED: emergency assistance required");
+  action.params.ble.length = strlen(action.params.ble.data);
+  ret = action_manager_execute(engine->actions, &action);
+  if (ret < 0)
+    {
+      return ret;
+    }
+
+  syslog(LOG_WARNING, "[Decision] FALL DETECTED! Emergency actions queued\n");
   return VELAWEAR_OK;
 }
 
@@ -220,7 +258,7 @@ int decision_engine_init(velawear_engine_t *engine, velawear_config_t *config)
   decision_engine_add_rule(engine, "fall_detected", 0,
                            VELAWEAR_PRIORITY_CRITICAL,
                            fall_detected_condition,
-                           fall_detected_action, NULL);
+                           fall_detected_action, engine);
 
   decision_engine_add_rule(engine, "heart_rate_critical", 0,
                            VELAWEAR_PRIORITY_CRITICAL,

@@ -36,6 +36,10 @@ static int velawear_log_action_handler(velawear_action_t *action,
                                        void *context);
 static int velawear_vibrate_action_handler(velawear_action_t *action,
                                             void *context);
+static int velawear_show_ui_action_handler(velawear_action_t *action,
+                                            void *context);
+static int velawear_send_ble_action_handler(velawear_action_t *action,
+                                             void *context);
 
 /****************************************************************************
  * Public Functions
@@ -44,6 +48,7 @@ static int velawear_vibrate_action_handler(velawear_action_t *action,
 int main(int argc, char *argv[])
 {
   int ret;
+  bool falltest = argc > 1 && strcmp(argv[1], "falltest") == 0;
 
   if (argc > 1 && strcmp(argv[1], "audio") == 0)
     {
@@ -90,30 +95,62 @@ int main(int argc, char *argv[])
 
   /* Main event loop: block waiting for events.  IMU sampling runs in its
    * producer thread so this task remains the single queue consumer. */
-  while (g_agent.running)
-    {
-      velawear_event_t event;
-      int event_ret;
+  {
+    bool falltest_sent = false;
 
-      event_ret = event_manager_pop(&g_agent.events, &event, 1000);
-      if (event_ret == VELAWEAR_OK)
-        {
-          event_ret = event_manager_dispatch(&g_agent.events, &event);
-          if (event_ret < 0)
-            {
-              syslog(LOG_WARNING,
-                     "[VelaWear] Event dispatch failed: %d\n", event_ret);
-            }
-        }
-      else if (event_ret != VELAWEAR_ERR_TIMEOUT)
-        {
-          syslog(LOG_WARNING,
-                 "[VelaWear] Event wait failed: %d\n", event_ret);
-        }
+    while (g_agent.running)
+      {
+        velawear_event_t event;
+        int event_ret;
 
-      /* LVGL initialization and timer handling stay on this task. */
-      display_manager_tick(&g_agent.display);
-    }
+        if (falltest && !falltest_sent)
+          {
+            memset(&event, 0, sizeof(event));
+            event.type = VELAWEAR_EVENT_FALL;
+            event.priority = VELAWEAR_PRIORITY_CRITICAL;
+            if (event_manager_push(&g_agent.events, &event) < 0)
+              {
+                syslog(LOG_ERR,
+                       "[VelaWear] Fall self-test event enqueue failed\n");
+              }
+            else
+              {
+                syslog(LOG_INFO,
+                       "[VelaWear] Fall self-test event queued\n");
+              }
+            falltest_sent = true;
+          }
+
+        event_ret = event_manager_pop(&g_agent.events, &event, 1000);
+        if (event_ret == VELAWEAR_OK)
+          {
+            event_ret = event_manager_dispatch(&g_agent.events, &event);
+            if (event_ret < 0)
+              {
+                syslog(LOG_WARNING,
+                       "[VelaWear] Event dispatch failed: %d\n", event_ret);
+              }
+            else if (falltest && event.type == VELAWEAR_EVENT_FALL)
+              {
+                /* Give action worker and main-thread display handoff time to run. */
+                for (int i = 0; i < 10; i++)
+                  {
+                    usleep(100000);
+                    display_manager_tick(&g_agent.display);
+                  }
+                g_agent.running = false;
+              }
+          }
+        else if (event_ret != VELAWEAR_ERR_TIMEOUT)
+          {
+            syslog(LOG_WARNING,
+                   "[VelaWear] Event wait failed: %d\n", event_ret);
+          }
+
+        /* LVGL initialization and timer handling stay on this task. */
+        display_manager_tick(&g_agent.display);
+      }
+  }
 
   /* Cleanup */
 
@@ -315,6 +352,28 @@ static int velawear_init(velawear_agent_t *agent)
       return ret;
     }
 
+  ret = action_manager_register_handler(&agent->actions,
+                                        VELAWEAR_ACTION_SHOW_UI,
+                                        velawear_show_ui_action_handler,
+                                        agent);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Show UI handler registration failed: %d\n",
+             ret);
+      return ret;
+    }
+
+  ret = action_manager_register_handler(&agent->actions,
+                                        VELAWEAR_ACTION_SEND_BLE,
+                                        velawear_send_ble_action_handler,
+                                        agent);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] BLE handler registration failed: %d\n",
+             ret);
+      return ret;
+    }
+
   return VELAWEAR_OK;
 }
 
@@ -403,7 +462,8 @@ static int velawear_event_handler(velawear_event_t *event, void *context)
 
   /* Every matched rule produces a traceable action.  Rule-specific handlers
    * can replace this log action later without changing the event pipeline. */
-  if (rule_id >= 0 && event->type != VELAWEAR_EVENT_IMU_DATA)
+  if (rule_id >= 0 && event->type != VELAWEAR_EVENT_IMU_DATA &&
+      event->type != VELAWEAR_EVENT_FALL)
     {
       memset(&action, 0, sizeof(action));
       action.type = VELAWEAR_ACTION_LOG;
@@ -443,5 +503,45 @@ static int velawear_vibrate_action_handler(velawear_action_t *action,
   syslog(LOG_INFO, "[Action] Vibrate: duration=%dms, pattern=%d\n",
          action->params.vibrate.duration_ms,
          action->params.vibrate.pattern);
+  return VELAWEAR_OK;
+}
+
+static int velawear_show_ui_action_handler(velawear_action_t *action,
+                                            void *context)
+{
+  velawear_agent_t *agent = (velawear_agent_t *)context;
+
+  if (action == NULL || agent == NULL)
+    {
+      return VELAWEAR_ERR_INVAL;
+    }
+
+  display_manager_show_alert(&agent->display, action->params.display.text);
+  syslog(LOG_WARNING, "[Action] Emergency UI alert shown\n");
+  return VELAWEAR_OK;
+}
+
+static int velawear_send_ble_action_handler(velawear_action_t *action,
+                                             void *context)
+{
+  velawear_agent_t *agent = (velawear_agent_t *)context;
+  velawear_state_t state;
+
+  if (action == NULL || agent == NULL)
+    {
+      return VELAWEAR_ERR_INVAL;
+    }
+
+  state = state_manager_get_state(&agent->state_mgr);
+  if (!state.ble_connected)
+    {
+      syslog(LOG_WARNING,
+             "[Action] BLE emergency notification deferred (not connected)\n");
+      return VELAWEAR_OK;
+    }
+
+  /* The BLE transport is not integrated yet; retain a deterministic log. */
+  syslog(LOG_WARNING, "[Action] BLE emergency notification: %s\n",
+         action->params.ble.data);
   return VELAWEAR_OK;
 }

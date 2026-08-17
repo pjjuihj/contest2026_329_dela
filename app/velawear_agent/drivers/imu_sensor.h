@@ -43,6 +43,23 @@ typedef struct imu_data
   uint32_t timestamp;
 } imu_data_t;
 
+/* Three-stage fall detector state. */
+
+typedef enum fall_stage
+{
+  FALL_STAGE_NONE = 0,
+  FALL_STAGE_FREEFALL,
+  FALL_STAGE_IMPACT,
+  FALL_STAGE_STILL
+} fall_stage_t;
+
+typedef struct fall_detector
+{
+  fall_stage_t stage;
+  uint32_t stage_start_ms;
+  bool confirmed;
+} fall_detector_t;
+
 /* Motion detection state */
 
 typedef struct motion_state
@@ -64,6 +81,7 @@ typedef struct imu_sensor
   imu_data_t buffer[IMU_BUFFER_SIZE];
   int buffer_index;
   motion_state_t motion;
+  fall_detector_t fall_detector;
   float threshold_move;
   float threshold_run;
   float threshold_fall;

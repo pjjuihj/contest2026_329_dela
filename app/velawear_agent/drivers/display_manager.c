@@ -84,6 +84,7 @@ int display_manager_init(velawear_display_t *display,
     }
 
   display_create_ui(display);
+  pthread_mutex_init(&display->lock, NULL);
   display->initialized = true;
   display->last_update_ms = 0;
   syslog(LOG_INFO, "[Display] LCD/LVGL initialized\n");
@@ -104,6 +105,33 @@ void display_manager_tick(velawear_display_t *display)
     }
 
   now = display_now_ms();
+  pthread_mutex_lock(&display->lock);
+  if (display->alert_pending)
+    {
+      lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x5b1111), 0);
+      lv_label_set_text(display->status_label, "FALL DETECTED!");
+      lv_obj_set_style_text_color(display->status_label,
+                                  lv_color_hex(0xfca5a5), 0);
+      lv_label_set_text(display->metrics_label, display->pending_alert);
+      lv_obj_set_style_text_color(display->metrics_label,
+                                  lv_color_hex(0xffffff), 0);
+      display->alert_until_ms = now + 5000;
+      display->alert_active = true;
+      display->alert_pending = false;
+    }
+  pthread_mutex_unlock(&display->lock);
+
+  if (display->alert_active)
+    {
+      if (now < display->alert_until_ms)
+        {
+          lv_timer_handler();
+          return;
+        }
+
+      display->alert_active = false;
+    }
+
   if (display->last_update_ms == 0 || now - display->last_update_ms >= 250)
     {
       state = state_manager_get_state(display->state_mgr);
@@ -122,6 +150,22 @@ void display_manager_tick(velawear_display_t *display)
   lv_timer_handler();
 }
 
+void display_manager_show_alert(velawear_display_t *display,
+                                const char *message)
+{
+  if (display == NULL || !display->initialized || message == NULL)
+    {
+      return;
+    }
+
+  pthread_mutex_lock(&display->lock);
+  strncpy(display->pending_alert, message,
+          sizeof(display->pending_alert) - 1);
+  display->pending_alert[sizeof(display->pending_alert) - 1] = '\0';
+  display->alert_pending = true;
+  pthread_mutex_unlock(&display->lock);
+}
+
 void display_manager_cleanup(velawear_display_t *display)
 {
   if (display == NULL || !display->initialized)
@@ -129,8 +173,17 @@ void display_manager_cleanup(velawear_display_t *display)
       return;
     }
 
+  /* The SF32 framebuffer driver owns its driver_data allocation.  Clear
+   * the callback-owned pointer before LVGL deletes the display to avoid a
+   * second free during shutdown. */
+  if (display->lv_result.disp != NULL)
+    {
+      lv_display_set_driver_data(display->lv_result.disp, NULL);
+    }
+
   lv_nuttx_deinit(&display->lv_result);
   lv_deinit();
+  pthread_mutex_destroy(&display->lock);
   display->initialized = false;
   syslog(LOG_INFO, "[Display] LCD/LVGL cleaned up\n");
 }

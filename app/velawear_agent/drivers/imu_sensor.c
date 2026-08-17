@@ -35,6 +35,15 @@
 #define DEFAULT_RUN_THRESHOLD   2.0f
 #define DEFAULT_FALL_THRESHOLD  15.0f
 
+#define FALL_FREEFALL_THRESHOLD 0.5f
+#define FALL_IMPACT_THRESHOLD   8.0f
+#define FALL_REST_MIN           0.7f
+#define FALL_REST_MAX           1.3f
+#define FALL_FREEFALL_WINDOW_MS 500
+#define FALL_FREEFALL_MIN_MS    100
+#define FALL_IMPACT_WINDOW_MS   2000
+#define FALL_CONFIRM_HOLD_MS    2000
+
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
@@ -42,6 +51,88 @@
 static float calculate_magnitude(float x, float y, float z)
 {
   return sqrtf(x * x + y * y + z * z);
+}
+
+static uint32_t imu_now_ms(void)
+{
+  struct timespec ts;
+
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+    {
+      return (uint32_t)time(NULL) * 1000;
+    }
+
+  return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+static void reset_fall_detector(imu_sensor_t *imu)
+{
+  imu->fall_detector.stage = FALL_STAGE_NONE;
+  imu->fall_detector.stage_start_ms = 0;
+  imu->fall_detector.confirmed = false;
+}
+
+static void update_fall_detector(imu_sensor_t *imu, float accel_mag)
+{
+  uint32_t now = imu_now_ms();
+  uint32_t elapsed = now - imu->fall_detector.stage_start_ms;
+
+  switch (imu->fall_detector.stage)
+    {
+      case FALL_STAGE_NONE:
+        if (accel_mag < FALL_FREEFALL_THRESHOLD)
+          {
+            imu->fall_detector.stage = FALL_STAGE_FREEFALL;
+            imu->fall_detector.stage_start_ms = now;
+            imu->fall_detector.confirmed = false;
+          }
+        break;
+
+      case FALL_STAGE_FREEFALL:
+        if (accel_mag > FALL_IMPACT_THRESHOLD &&
+            elapsed >= FALL_FREEFALL_MIN_MS &&
+            elapsed <= FALL_FREEFALL_WINDOW_MS)
+          {
+            imu->fall_detector.stage = FALL_STAGE_IMPACT;
+            imu->fall_detector.stage_start_ms = now;
+          }
+        else if (accel_mag >= FALL_FREEFALL_THRESHOLD ||
+                 elapsed > FALL_FREEFALL_WINDOW_MS)
+          {
+            /* Freefall must remain below 0.5g until the impact sample. */
+            reset_fall_detector(imu);
+          }
+        break;
+
+      case FALL_STAGE_IMPACT:
+        if (accel_mag >= FALL_REST_MIN && accel_mag <= FALL_REST_MAX &&
+            elapsed <= FALL_IMPACT_WINDOW_MS)
+          {
+            imu->fall_detector.stage = FALL_STAGE_STILL;
+            imu->fall_detector.stage_start_ms = now;
+            imu->fall_detector.confirmed = true;
+            syslog(LOG_WARNING,
+                   "[IMU] Fall confirmed after freefall and impact\n");
+          }
+        else if (elapsed > FALL_IMPACT_WINDOW_MS)
+          {
+            reset_fall_detector(imu);
+          }
+        break;
+
+      case FALL_STAGE_STILL:
+        if (elapsed > FALL_CONFIRM_HOLD_MS)
+          {
+            reset_fall_detector(imu);
+          }
+        break;
+
+      default:
+        reset_fall_detector(imu);
+        break;
+    }
+
+  imu->motion.fall_detected = imu->fall_detector.confirmed;
 }
 
 static void update_motion_state(imu_sensor_t *imu, imu_data_t *data)
@@ -53,13 +144,9 @@ static void update_motion_state(imu_sensor_t *imu, imu_data_t *data)
                                        data->gyro_y,
                                        data->gyro_z);
 
-  /* Check for fall detection (sudden high acceleration) */
+  /* Confirm a fall only after freefall, impact, and post-impact stillness. */
 
-  if (accel_mag > imu->threshold_fall)
-    {
-      imu->motion.fall_detected = true;
-      syslog(LOG_WARNING, "[IMU] Fall detected! Accel: %.2f\n", accel_mag);
-    }
+  update_fall_detector(imu, accel_mag);
 
   /* Check for running (high acceleration + gyro) */
 
