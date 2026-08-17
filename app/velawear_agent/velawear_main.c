@@ -34,6 +34,8 @@ static void *velawear_imu_thread(void *context);
 static int velawear_event_handler(velawear_event_t *event, void *context);
 static int velawear_log_action_handler(velawear_action_t *action,
                                        void *context);
+static int velawear_vibrate_action_handler(velawear_action_t *action,
+                                            void *context);
 
 /****************************************************************************
  * Public Functions
@@ -245,6 +247,15 @@ static int velawear_init(velawear_agent_t *agent)
       return ret;
     }
 
+  ret = decision_engine_set_action_manager(&agent->engine,
+                                             &agent->actions);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Decision action routing setup failed: %d\n",
+             ret);
+      return ret;
+    }
+
   /* Initialize sensor drivers */
 
   ret = imu_sensor_init(&agent->imu);
@@ -289,6 +300,17 @@ static int velawear_init(velawear_agent_t *agent)
   if (ret < 0)
     {
       syslog(LOG_ERR, "[VelaWear] Action handler registration failed: %d\n",
+             ret);
+      return ret;
+    }
+
+  ret = action_manager_register_handler(&agent->actions,
+                                        VELAWEAR_ACTION_VIBRATE,
+                                        velawear_vibrate_action_handler,
+                                        agent);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Vibrate handler registration failed: %d\n",
              ret);
       return ret;
     }
@@ -381,7 +403,7 @@ static int velawear_event_handler(velawear_event_t *event, void *context)
 
   /* Every matched rule produces a traceable action.  Rule-specific handlers
    * can replace this log action later without changing the event pipeline. */
-  if (rule_id >= 0)
+  if (rule_id >= 0 && event->type != VELAWEAR_EVENT_IMU_DATA)
     {
       memset(&action, 0, sizeof(action));
       action.type = VELAWEAR_ACTION_LOG;
@@ -405,5 +427,21 @@ static int velawear_log_action_handler(velawear_action_t *action,
       syslog(LOG_INFO, "[VelaWear] action %d executed\n", action->type);
     }
 
+  return VELAWEAR_OK;
+}
+
+static int velawear_vibrate_action_handler(velawear_action_t *action,
+                                            void *context)
+{
+  if (action == NULL)
+    {
+      return VELAWEAR_ERR_INVAL;
+    }
+
+  /* Hardware PWM/GPIO wiring is board-specific; keep the action observable
+   * until the motor pin is assigned in the board configuration. */
+  syslog(LOG_INFO, "[Action] Vibrate: duration=%dms, pattern=%d\n",
+         action->params.vibrate.duration_ms,
+         action->params.vibrate.pattern);
   return VELAWEAR_OK;
 }

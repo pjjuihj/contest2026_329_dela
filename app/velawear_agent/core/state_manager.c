@@ -59,8 +59,8 @@ int state_manager_init(velawear_state_mgr_t *mgr)
   mgr->state.ble_connected = false;
   mgr->state.has_network = false;
   mgr->state.signal_strength = 0;
-  mgr->state.last_move_time = 0;
-  mgr->state.last_interaction_time = 0;
+  mgr->state.last_move_time = (uint32_t)time(NULL);
+  mgr->state.last_interaction_time = mgr->state.last_move_time;
   mgr->state.fall_count_today = 0;
   mgr->state.move_count_today = 0;
 

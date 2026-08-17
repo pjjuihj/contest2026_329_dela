@@ -15,6 +15,7 @@
 #include <syslog.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "velawear.h"
 #include "decision_engine.h"
@@ -74,6 +75,61 @@ static int battery_critical_action(velawear_state_t *state, void *context)
   state->power_mode = VELAWEAR_POWER_DEEP_SLEEP;
 
   return VELAWEAR_OK;
+}
+
+/****************************************************************************
+ * Sedentary Reminder (Layer 1 - Configurable)
+ ****************************************************************************/
+
+static bool sedentary_condition(velawear_state_t *state,
+                                velawear_event_t *event)
+{
+  uint32_t now;
+
+  if (state == NULL || state->is_moving || state->last_move_time == 0)
+    {
+      return false;
+    }
+
+  now = (uint32_t)time(NULL);
+  return now >= state->last_move_time &&
+         now - state->last_move_time >= 45 * 60;
+}
+
+static int sedentary_action(velawear_state_t *state, void *context)
+{
+  velawear_engine_t *engine = (velawear_engine_t *)context;
+  velawear_action_t action;
+  uint32_t now;
+  int ret;
+
+  if (engine == NULL || engine->actions == NULL)
+    {
+      return VELAWEAR_ERR_INVAL;
+    }
+
+  now = (uint32_t)time(NULL);
+  if (engine->last_sedentary_reminder != 0 &&
+      now >= engine->last_sedentary_reminder &&
+      now - engine->last_sedentary_reminder < 45 * 60)
+    {
+      return VELAWEAR_OK;
+    }
+
+  memset(&action, 0, sizeof(action));
+  action.type = VELAWEAR_ACTION_VIBRATE;
+  action.priority = VELAWEAR_PRIORITY_NORMAL;
+  action.params.vibrate.duration_ms = 500;
+  action.params.vibrate.pattern = 0;
+
+  ret = action_manager_execute(engine->actions, &action);
+  if (ret == VELAWEAR_OK)
+    {
+      engine->last_sedentary_reminder = now;
+      syslog(LOG_INFO, "[Decision] Sedentary reminder queued\n");
+    }
+
+  return ret;
 }
 
 /****************************************************************************
@@ -176,6 +232,11 @@ int decision_engine_init(velawear_engine_t *engine, velawear_config_t *config)
                            battery_critical_condition,
                            battery_critical_action, NULL);
 
+  decision_engine_add_rule(engine, "sedentary_reminder", 1,
+                           VELAWEAR_PRIORITY_NORMAL,
+                           sedentary_condition,
+                           sedentary_action, engine);
+
   syslog(LOG_INFO, "[Decision] Initialized with %d rules\n",
          engine->rule_count);
   return VELAWEAR_OK;
@@ -201,6 +262,20 @@ int decision_engine_start(velawear_engine_t *engine)
     }
 
   syslog(LOG_INFO, "[Decision] Started\n");
+  return VELAWEAR_OK;
+}
+
+int decision_engine_set_action_manager(velawear_engine_t *engine,
+                                        velawear_actions_t *actions)
+{
+  if (engine == NULL || actions == NULL)
+    {
+      return VELAWEAR_ERR_INVAL;
+    }
+
+  pthread_mutex_lock(&engine->lock);
+  engine->actions = actions;
+  pthread_mutex_unlock(&engine->lock);
   return VELAWEAR_OK;
 }
 

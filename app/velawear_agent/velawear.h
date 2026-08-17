@@ -230,8 +230,8 @@ typedef struct velawear_audio
  ****************************************************************************/
 
 #include "core/event_manager.h"
-#include "core/decision_engine.h"
 #include "core/action_manager.h"
+#include "core/decision_engine.h"
 #include "core/state_manager.h"
 #include "display_manager.h"
 #include "drivers/imu_sensor.h"

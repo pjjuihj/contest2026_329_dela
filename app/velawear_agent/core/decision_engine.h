@@ -60,6 +60,8 @@ typedef struct velawear_engine
   int rule_count;
   pthread_mutex_t lock;
   velawear_config_t *config;
+  velawear_actions_t *actions;
+  uint32_t last_sedentary_reminder;
 } velawear_engine_t;
 
 /****************************************************************************
@@ -68,6 +70,8 @@ typedef struct velawear_engine
 
 int decision_engine_init(velawear_engine_t *engine, velawear_config_t *config);
 int decision_engine_start(velawear_engine_t *engine);
+int decision_engine_set_action_manager(velawear_engine_t *engine,
+                                        velawear_actions_t *actions);
 void decision_engine_cleanup(velawear_engine_t *engine);
 
 int decision_engine_add_rule(velawear_engine_t *engine,
