@@ -18,9 +18,72 @@ static uint32_t display_now_ms(void)
   return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
 }
 
+static void display_gesture_cb(lv_event_t *event)
+{
+  velawear_display_t *display;
+  lv_indev_t *indev;
+  lv_dir_t dir = LV_DIR_NONE;
+  lv_point_t point;
+  velawear_event_t touch_event;
+  lv_event_code_t code;
+
+  display = (velawear_display_t *)lv_event_get_user_data(event);
+  indev = lv_indev_active();
+  if (display == NULL || indev == NULL)
+    {
+      return;
+    }
+
+  code = lv_event_get_code(event);
+  lv_indev_get_point(indev, &point);
+  if (code == LV_EVENT_GESTURE)
+    {
+      dir = lv_indev_get_gesture_dir(indev);
+    }
+
+  memset(&touch_event, 0, sizeof(touch_event));
+  touch_event.type = VELAWEAR_EVENT_TOUCH;
+  touch_event.priority = VELAWEAR_PRIORITY_NORMAL;
+  touch_event.timestamp = display_now_ms();
+  touch_event.data.touch.x = point.x;
+  touch_event.data.touch.y = point.y;
+  touch_event.data.touch.gesture = code == LV_EVENT_GESTURE ?
+                                    (int)dir : (int)code;
+  if (display->events != NULL &&
+      event_manager_push(display->events, &touch_event) < 0)
+    {
+      syslog(LOG_WARNING, "[Display] Failed to queue touch gesture\n");
+    }
+
+  if (code == LV_EVENT_CLICKED)
+    {
+      /* A short press returns to the always-available watchface. */
+      display_manager_set_page(display, VELAWEAR_PAGE_WATCHFACE);
+    }
+  else if (code == LV_EVENT_LONG_PRESSED)
+    {
+      /* Long press opens settings until a dedicated settings menu exists. */
+      display_manager_set_page(display, VELAWEAR_PAGE_SETTINGS);
+    }
+  else if ((dir & LV_DIR_LEFT) != 0 || (dir & LV_DIR_TOP) != 0)
+    {
+      display_manager_next_page(display);
+    }
+  else if ((dir & LV_DIR_RIGHT) != 0 || (dir & LV_DIR_BOTTOM) != 0)
+    {
+      display_manager_previous_page(display);
+    }
+}
+
 static void display_create_ui(velawear_display_t *display)
 {
   lv_obj_t *screen = lv_screen_active();
+  lv_obj_t *tile;
+  lv_obj_t *label;
+  static const char *page_names[VELAWEAR_PAGE_COUNT] =
+    {
+      "Watchface", "Data Panel", "Task List", "Settings"
+    };
 
   lv_obj_set_style_bg_color(screen, lv_color_hex(0x07111f), 0);
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
@@ -32,17 +95,35 @@ static void display_create_ui(velawear_display_t *display)
   lv_obj_align(display->status_label, LV_ALIGN_TOP_MID, 0, 18);
 
   display->page_title = lv_label_create(screen);
-  lv_label_set_text(display->page_title, "Watchface");
+  lv_label_set_text(display->page_title, page_names[0]);
   lv_obj_set_style_text_color(display->page_title,
                               lv_color_hex(0x67e8f9), 0);
   lv_obj_align(display->page_title, LV_ALIGN_TOP_MID, 0, 50);
 
-  display->metrics_label = lv_label_create(screen);
-  lv_label_set_text(display->metrics_label,
-                    "VelaWear\nStarting...");
-  lv_obj_set_style_text_color(display->metrics_label,
-                              lv_color_hex(0xf8fafc), 0);
-  lv_obj_align(display->metrics_label, LV_ALIGN_CENTER, 0, 0);
+  display->tileview = lv_tileview_create(screen);
+  lv_obj_set_size(display->tileview, lv_pct(100), lv_pct(66));
+  lv_obj_align(display->tileview, LV_ALIGN_CENTER, 0, 8);
+  for (uint32_t i = 0; i < VELAWEAR_PAGE_COUNT; i++)
+    {
+      tile = lv_tileview_add_tile(display->tileview, (uint8_t)i, 0,
+                                  LV_DIR_HOR);
+      lv_obj_set_style_bg_color(tile, lv_color_hex(0x07111f), 0);
+      lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
+      label = lv_label_create(tile);
+      lv_label_set_text(label, page_names[i]);
+      lv_obj_set_width(label, lv_pct(90));
+      lv_obj_set_style_text_color(label, lv_color_hex(0xf8fafc), 0);
+      lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+      lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+      display->page_content[i] = label;
+    }
+  lv_obj_add_event_cb(display->tileview, display_gesture_cb,
+                      LV_EVENT_GESTURE, display);
+  lv_obj_add_event_cb(display->tileview, display_gesture_cb,
+                      LV_EVENT_CLICKED, display);
+  lv_obj_add_event_cb(display->tileview, display_gesture_cb,
+                      LV_EVENT_LONG_PRESSED, display);
+  display->metrics_label = display->page_content[0];
 
   display->page_hint = lv_label_create(screen);
   lv_label_set_text(display->page_hint, "Swipe to change | 1/4");
@@ -114,23 +195,26 @@ static void display_render_page(velawear_display_t *display,
 
   snprintf(hint, sizeof(hint), "Swipe to change | %u/4",
            (unsigned int)display->page_index + 1);
+  display->metrics_label = display->page_content[display->page_index];
   lv_label_set_text(display->page_title, title);
   lv_label_set_text(display->metrics_label, content);
   lv_label_set_text(display->page_hint, hint);
 }
 
 int display_manager_init(velawear_display_t *display,
-                         velawear_state_mgr_t *state_mgr)
+                         velawear_state_mgr_t *state_mgr,
+                         velawear_events_t *events)
 {
   lv_nuttx_dsc_t info;
 
-  if (display == NULL || state_mgr == NULL)
+  if (display == NULL || state_mgr == NULL || events == NULL)
     {
       return VELAWEAR_ERR_INVAL;
     }
 
   memset(display, 0, sizeof(*display));
   display->state_mgr = state_mgr;
+  display->events = events;
 
   if (lv_is_initialized())
     {
@@ -228,6 +312,12 @@ void display_manager_set_page(velawear_display_t *display,
     }
 
   display->page_index = (uint8_t)page;
+  display->metrics_label = display->page_content[display->page_index];
+  if (display->tileview != NULL)
+    {
+      lv_tileview_set_tile_by_index(display->tileview, display->page_index, 0,
+                                    LV_ANIM_ON);
+    }
   display->last_update_ms = 0;
 }
 

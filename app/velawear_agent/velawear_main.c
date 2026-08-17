@@ -259,7 +259,8 @@ static int velawear_init(velawear_agent_t *agent)
   /* Initialize the LCD/LVGL status page on the main thread.  LVGL keeps
    * context in task-local storage, so timer handling stays in this thread. */
 
-  ret = display_manager_init(&agent->display, &agent->state_mgr);
+  ret = display_manager_init(&agent->display, &agent->state_mgr,
+                             &agent->events);
   if (ret < 0)
     {
       syslog(LOG_WARNING, "[VelaWear] Display init failed: %d\n", ret);
