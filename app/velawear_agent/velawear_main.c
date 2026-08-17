@@ -365,6 +365,8 @@ static int velawear_event_handler(velawear_event_t *event, void *context)
 {
   velawear_agent_t *agent = (velawear_agent_t *)context;
   velawear_state_t state;
+  velawear_action_t action;
+  int rule_id;
   int ret;
 
   ret = state_manager_update_from_event(&agent->state_mgr, event);
@@ -375,12 +377,24 @@ static int velawear_event_handler(velawear_event_t *event, void *context)
 
   state = state_manager_get_state(&agent->state_mgr);
   agent->state = state;
-  decision_engine_evaluate(&agent->engine, &state, event);
+  rule_id = decision_engine_evaluate(&agent->engine, &state, event);
 
-  /* Decision rules may enqueue actions; the action manager worker performs
-   * the actual callbacks, and this call wakes it without a second consumer. */
-  ret = action_manager_process(&agent->actions);
-  return ret;
+  /* Every matched rule produces a traceable action.  Rule-specific handlers
+   * can replace this log action later without changing the event pipeline. */
+  if (rule_id >= 0)
+    {
+      memset(&action, 0, sizeof(action));
+      action.type = VELAWEAR_ACTION_LOG;
+      action.priority = event->priority;
+      ret = action_manager_execute(&agent->actions, &action);
+      if (ret < 0)
+        {
+          return ret;
+        }
+    }
+
+  /* The action manager worker performs callbacks; wake it after evaluation. */
+  return action_manager_process(&agent->actions);
 }
 
 static int velawear_log_action_handler(velawear_action_t *action,
