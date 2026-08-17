@@ -1,0 +1,395 @@
+/*
+ * VelaWear Agent - Main Entry Point
+ *
+ * This is the main entry point for the VelaWear Agent application.
+ * It initializes all subsystems and starts the main event loop.
+ *
+ * Author: pjjuihj
+ * Team: 329 - dela
+ */
+
+#include <nuttx/config.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+#include <signal.h>
+#include <syslog.h>
+
+#include "velawear.h"
+#include "audio_hw_test.h"
+
+/* Global agent instance */
+
+static velawear_agent_t g_agent;
+
+/* Forward declarations */
+
+static int velawear_init(velawear_agent_t *agent);
+static int velawear_start(velawear_agent_t *agent);
+static void velawear_cleanup(velawear_agent_t *agent);
+static void velawear_signal_handler(int signo);
+static void *velawear_imu_thread(void *context);
+static int velawear_event_handler(velawear_event_t *event, void *context);
+static int velawear_log_action_handler(velawear_action_t *action,
+                                       void *context);
+
+/****************************************************************************
+ * Public Functions
+ ****************************************************************************/
+
+int main(int argc, char *argv[])
+{
+  int ret;
+
+  if (argc > 1 && strcmp(argv[1], "audio") == 0)
+    {
+      return velawear_audio_hw_test();
+    }
+
+  syslog(LOG_INFO, "[VelaWear] Agent starting...\n");
+  if (argc > 1 && strcmp(argv[1], "mic") == 0)
+    {
+      return velawear_mic_hw_test();
+    }
+
+  /* Initialize agent structure */
+
+  memset(&g_agent, 0, sizeof(velawear_agent_t));
+  g_agent.running = false;
+  g_agent.power_mode = VELAWEAR_POWER_IDLE;
+
+  /* Set up signal handler */
+
+  signal(SIGTERM, velawear_signal_handler);
+  signal(SIGINT, velawear_signal_handler);
+
+  /* Initialize subsystems */
+
+  ret = velawear_init(&g_agent);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Initialization failed: %d\n", ret);
+      return EXIT_FAILURE;
+    }
+
+  /* Start the agent */
+
+  ret = velawear_start(&g_agent);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Start failed: %d\n", ret);
+      velawear_cleanup(&g_agent);
+      return EXIT_FAILURE;
+    }
+
+  syslog(LOG_INFO, "[VelaWear] Agent started successfully\n");
+
+  /* Main event loop: block waiting for events.  IMU sampling runs in its
+   * producer thread so this task remains the single queue consumer. */
+  while (g_agent.running)
+    {
+      velawear_event_t event;
+      int event_ret;
+
+      event_ret = event_manager_pop(&g_agent.events, &event, 1000);
+      if (event_ret == VELAWEAR_OK)
+        {
+          event_ret = event_manager_dispatch(&g_agent.events, &event);
+          if (event_ret < 0)
+            {
+              syslog(LOG_WARNING,
+                     "[VelaWear] Event dispatch failed: %d\n", event_ret);
+            }
+        }
+      else if (event_ret != VELAWEAR_ERR_TIMEOUT)
+        {
+          syslog(LOG_WARNING,
+                 "[VelaWear] Event wait failed: %d\n", event_ret);
+        }
+
+      /* LVGL initialization and timer handling stay on this task. */
+      display_manager_tick(&g_agent.display);
+    }
+
+  /* Cleanup */
+
+  velawear_cleanup(&g_agent);
+  syslog(LOG_INFO, "[VelaWear] Agent stopped\n");
+
+  return EXIT_SUCCESS;
+}
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+static void *velawear_imu_thread(void *context)
+{
+  velawear_agent_t *agent = (velawear_agent_t *)context;
+  bool fall_reported = false;
+
+  while (agent->running)
+    {
+      imu_data_t sample;
+      motion_state_t motion;
+      velawear_event_t event;
+      int period_us = 20000;
+
+      if (imu_sensor_read(&agent->imu, &sample) == VELAWEAR_OK)
+        {
+          memset(&event, 0, sizeof(event));
+          event.type = VELAWEAR_EVENT_IMU_DATA;
+          event.priority = VELAWEAR_PRIORITY_NORMAL;
+          event.timestamp = sample.timestamp;
+          event.data.imu.x = sample.accel_x;
+          event.data.imu.y = sample.accel_y;
+          event.data.imu.z = sample.accel_z;
+          if (event_manager_push(&agent->events, &event) < 0)
+            {
+              syslog(LOG_WARNING,
+                     "[VelaWear] Failed to queue IMU event\n");
+            }
+
+          motion = imu_sensor_get_motion_state(&agent->imu);
+          if (motion.fall_detected && !fall_reported)
+            {
+              event.type = VELAWEAR_EVENT_FALL;
+              event.priority = VELAWEAR_PRIORITY_CRITICAL;
+              if (event_manager_push(&agent->events, &event) < 0)
+                {
+                  syslog(LOG_WARNING,
+                         "[VelaWear] Failed to queue fall event\n");
+                }
+              fall_reported = true;
+            }
+          else if (!motion.fall_detected)
+            {
+              fall_reported = false;
+            }
+        }
+
+      if (agent->config.imu_sample_rate_hz > 0)
+        {
+          period_us = 1000000 / agent->config.imu_sample_rate_hz;
+          if (period_us < 1000)
+            {
+              period_us = 1000;
+            }
+        }
+
+      usleep(period_us);
+    }
+
+  return NULL;
+}
+
+static int velawear_init(velawear_agent_t *agent)
+{
+  int ret;
+
+  /* Initialize configuration */
+
+  ret = velawear_config_init(&agent->config);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Config init failed: %d\n", ret);
+      return ret;
+    }
+
+  /* Initialize event manager */
+
+  ret = event_manager_init(&agent->events);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Event manager init failed: %d\n", ret);
+      return ret;
+    }
+
+  /* Initialize state manager */
+
+  ret = state_manager_init(&agent->state_mgr);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] State manager init failed: %d\n", ret);
+      return ret;
+    }
+  agent->state = state_manager_get_state(&agent->state_mgr);
+
+  /* Initialize the LCD/LVGL status page on the main thread.  LVGL keeps
+   * context in task-local storage, so timer handling stays in this thread. */
+
+  ret = display_manager_init(&agent->display, &agent->state_mgr);
+  if (ret < 0)
+    {
+      syslog(LOG_WARNING, "[VelaWear] Display init failed: %d\n", ret);
+      /* Non-fatal: the agent remains usable without a display. */
+    }
+
+  /* Initialize decision engine */
+
+  ret = decision_engine_init(&agent->engine, &agent->config);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Decision engine init failed: %d\n", ret);
+      return ret;
+    }
+
+  /* Initialize action manager */
+
+  ret = action_manager_init(&agent->actions);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Action manager init failed: %d\n", ret);
+      return ret;
+    }
+
+  /* Initialize sensor drivers */
+
+  ret = imu_sensor_init(&agent->imu);
+  if (ret < 0)
+    {
+      syslog(LOG_WARNING, "[VelaWear] IMU sensor init failed: %d\n", ret);
+      /* Non-fatal: continue without IMU */
+    }
+
+  ret = audio_sensor_init(&agent->audio);
+  if (ret < 0)
+    {
+      syslog(LOG_WARNING, "[VelaWear] Audio sensor init failed: %d\n", ret);
+      /* Non-fatal: continue without audio */
+    }
+
+  /* Initialize LLM client */
+
+  ret = velawear_llm_init(&agent->llm);
+  if (ret < 0)
+    {
+      syslog(LOG_WARNING, "[VelaWear] LLM init failed: %d\n", ret);
+      /* Non-fatal: continue without LLM */
+    }
+
+  ret = event_manager_register_handler(&agent->events,
+                                       VELAWEAR_EVENT_NONE,
+                                       velawear_event_handler,
+                                       agent,
+                                       VELAWEAR_PRIORITY_NORMAL);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Event handler registration failed: %d\n",
+             ret);
+      return ret;
+    }
+
+  ret = action_manager_register_handler(&agent->actions,
+                                        VELAWEAR_ACTION_LOG,
+                                        velawear_log_action_handler,
+                                        agent);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Action handler registration failed: %d\n",
+             ret);
+      return ret;
+    }
+
+  return VELAWEAR_OK;
+}
+
+static int velawear_start(velawear_agent_t *agent)
+{
+  int ret;
+
+  /* The main loop owns event queue consumption.  Do not start a second
+   * consumer thread for the same mqueue. */
+
+  /* Start action manager thread. */
+
+  ret = action_manager_start(&agent->actions);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "[VelaWear] Action manager start failed: %d\n", ret);
+      return ret;
+    }
+
+  /* Decision rules are evaluated synchronously for each event. */
+
+  /* Mark agent as running before starting the sensor producer. */
+
+  agent->running = true;
+  if (agent->imu.initialized)
+    {
+      ret = pthread_create(&agent->imu_thread, NULL,
+                           velawear_imu_thread, agent);
+      if (ret != 0)
+        {
+          agent->running = false;
+          syslog(LOG_ERR, "[VelaWear] IMU thread start failed: %d\n", ret);
+          return VELAWEAR_ERR_IO;
+        }
+      agent->imu_thread_started = true;
+    }
+
+  return VELAWEAR_OK;
+}
+
+static void velawear_cleanup(velawear_agent_t *agent)
+{
+  /* Stop subsystems in reverse order */
+
+  agent->running = false;
+  if (agent->imu_thread_started)
+    {
+      pthread_join(agent->imu_thread, NULL);
+      agent->imu_thread_started = false;
+    }
+
+  velawear_llm_cleanup(&agent->llm);
+  audio_sensor_cleanup(&agent->audio);
+  imu_sensor_cleanup(&agent->imu);
+  action_manager_cleanup(&agent->actions);
+  event_manager_cleanup(&agent->events);
+  decision_engine_cleanup(&agent->engine);
+  display_manager_cleanup(&agent->display);
+  state_manager_cleanup(&agent->state_mgr);
+  velawear_config_cleanup(&agent->config);
+}
+
+static void velawear_signal_handler(int signo)
+{
+  syslog(LOG_INFO, "[VelaWear] Received signal %d, shutting down\n", signo);
+  g_agent.running = false;
+}
+
+static int velawear_event_handler(velawear_event_t *event, void *context)
+{
+  velawear_agent_t *agent = (velawear_agent_t *)context;
+  velawear_state_t state;
+  int ret;
+
+  ret = state_manager_update_from_event(&agent->state_mgr, event);
+  if (ret < 0)
+    {
+      return ret;
+    }
+
+  state = state_manager_get_state(&agent->state_mgr);
+  agent->state = state;
+  decision_engine_evaluate(&agent->engine, &state, event);
+
+  /* Decision rules may enqueue actions; the action manager worker performs
+   * the actual callbacks, and this call wakes it without a second consumer. */
+  ret = action_manager_process(&agent->actions);
+  return ret;
+}
+
+static int velawear_log_action_handler(velawear_action_t *action,
+                                       void *context)
+{
+  if (action)
+    {
+      syslog(LOG_INFO, "[VelaWear] action %d executed\n", action->type);
+    }
+
+  return VELAWEAR_OK;
+}

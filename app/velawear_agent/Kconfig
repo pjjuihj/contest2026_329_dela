@@ -1,0 +1,44 @@
+#
+# VelaWear Agent - AI-powered wearable agent for SF32LB52
+#
+
+config LVX_USE_DEMO_CONTEST2026_329_VELAWEAR_AGENT
+	bool "Contest 2026 team 329 VelaWear Agent"
+	default n
+	depends on !LVX_USE_DEMO_CONTEST2026_000_HELLO_APP
+	---help---
+		Enable VelaWear Agent - an AI-powered wearable agent that provides
+		proactive health monitoring, sedentary reminders, and fall detection
+		on the SF32LB52 Huangshan Pi.
+
+if LVX_USE_DEMO_CONTEST2026_329_VELAWEAR_AGENT
+
+config VELAWEAR_IMU_SAMPLE_RATE_HZ
+	int "IMU sample rate in Hz"
+	default 50
+	---help---
+		IMU accelerometer/gyroscope sampling frequency in Hz.
+		Higher values give better motion detection but consume more power.
+		50Hz is recommended for activity tracking.
+
+config VELAWEAR_SEDENTARY_THRESHOLD_SEC
+	int "Sedentary alert threshold in seconds"
+	default 3600
+	---help---
+		How long (in seconds) of continuous inactivity before triggering
+		a sedentary reminder. Default is 3600 (1 hour).
+
+config VELAWEAR_FALL_ACCEL_THRESHOLD_G
+	int "Fall detection acceleration threshold (x10 G)"
+	default 25
+	---help---
+		Fall detection triggers when acceleration exceeds this value
+		in units of 0.1G. Default 25 means 2.5G.
+
+config VELAWEAR_EVENT_QUEUE_SIZE
+	int "Event queue size"
+	default 32
+	---help---
+		Maximum number of events that can be queued simultaneously.
+
+endif # LVX_USE_DEMO_CONTEST2026_329_VELAWEAR_AGENT
