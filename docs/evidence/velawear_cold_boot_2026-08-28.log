@@ -1,0 +1,80 @@
+velawear [10:100]
+
+NuttShell (NSH)
+nsh> [Kuname -a
+[0m[VelaWear] Agent starting...
+[0m[0m[Config] Initialized imu=50Hz sedentary=3600s fall=2.5g queue=32
+[0m[0m[EventMgr] Initialized queue=32
+[0m[0m[StateMgr] Initialized
+[0mNuttX  0.0.0 dd92bcf4257-dirty Aug 28 2026 00:43:56 arm nsh
+nsh> [K[0m[31;1m[LVGL] [User]	(3.414, +3414)	 check_stack_size: tid: 10, Stack size : 40856 lv_nuttx_entry.c:283
+[0m[0m[31;1m[LVGL] [User]	(3.416, +2)	 lv_nuttx_lcd_create: lcd /dev/lcd0 opening lv_nuttx_lcd.c:77
+[0m[0m[31;1m[LVGL] [User]	(3.419, +3)	 lv_nuttx_lcd_create: lcd /dev/lcd0 open success lv_nuttx_lcd.c:84
+[0m[0m[31;1m[LVGL] [User]	(3.431, +12)	 lv_nuttx_touchscreen_create: touchscreen /dev/input0 opening lv_nuttx_touchscreen.c:79
+[0m[0m[31;1m[LVGL] [User]	(3.434, +3)	 lv_nuttx_touchscreen_create: touchscreen /dev/input0 open success, maxpoint 1 lv_nuttx_touchscreen.c:98
+[0m[0m[33m[LVGL] [Warn]	(3.436, +2)	 lv_freetype_init: freetype already initialized lv_freetype.c:68
+[0m[0m[Display] Unified MiSans runtime font active
+[0m[0m[Display] Watchface and APP center initialized
+[0m[0mdev:0: Sending HCI_RESET
+[0m[0m[BLE] identity count=1 addr=CD:AB:78:56:34:12 (public)
+[0m[0m[BLE-HCI] tx opcode=0x2006 params=15
+[0m[0m[BLE-HCI] rx opcode=0x2006 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x2008 params=32
+[0m[0m[BLE-HCI] rx opcode=0x2008 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x2009 params=32
+[0m[0m[BLE-HCI] rx opcode=0x2009 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x200a params=1
+[0m[0m[BLE-HCI] rx opcode=0x200a status=0x00
+[0m[0m[BLE] advertising start ret=0 options=0x05
+[0m[0m[BLE] VelaWear GATT service registered; advertising
+[0m[0m[BLE] init result=0 available=1
+[0m[0m[Buttons] KEY2 input enabled
+[0m[0m[Decision] Added rule 'fall_detected' (layer=0, priority=3)
+[0m[0m[Decision] Added rule 'heart_rate_critical' (layer=0, priority=3)
+[0m[0m[Decision] Added rule 'battery_crital' (layer=0, priority=2)
+[0m[0m[Decision] Added rule 'sedentary_reminder' (layer=1, priority=1)
+[0m[0m[Decision] Initialized with 4 rules
+[0m[0m[ActionMgr] Initialized
+[0m[0m[IMU] Initialized
+[0m[0m[Audio] Probing onboard MEMS microphone via direct AUDCODEC ADC
+[0m[0m[AudioTest] SF32LB52 AUDCODEC test begin
+[0m[0m[AudioTest] MICROPHONE: DMA sampling for 2 seconds
+[0m[0m[AudioTest] MICROPHONE: DMA samples=32000 min=-3689 max=2223 avg_abs=220
+[0m[0m[AudioTest] MICROPHONE: DMA peak_abs=3689 above_1000=384 above_5000=0
+[0m[0m[AudioTest] complete
+[0m[0m[Audio] Onboard MEMS microvia direct AUDCODEC ADC at 16000 Hz
+[0m[0m[LLM] Initialized (BLE cloud bridge + local fallback ready)
+[0m[0m[33m[Degrade=independent reason=cloud disconnected
+[0m[0m[EventMgr] Reg7
+[0m[0m[ActionMgr] Registered handler for type 2
+[0m[0m[ActionMgr] Registered handler for type 3
+[0m[0m[ActionMgr] Registered handler for type 8
+[0m[0m[ActionMgr] Registered handler for type 1
+[0m[0m[ActionMgr] Registered handler for type 4
+[0m[0m[ActionMgr] Registered handler for type 5
+[0m[0m[ActionMgr] Registered handler for type 6
+[0m[0m[ActionMgr] Started
+[0m[0m[Decision] Started
+[0m[0m[Watchdog] Hardware watchdog started (5000 ms)
+[0m[0m[ActionMgr] Thread started
+[0m[0m[Decision] Thread started
+[0m[0m[Watchdog] Software monitor started
+[0m[0m[AudioStream] continuous MEMS capture started (16000 Hz, half=320 samples)
+[0m[0m[XiaoZhi] worker started (ota=1 audio=1)
+[0m[0m[VelaWear] XiaoZhi worker requested
+[0m[0m[VelaWear] Agent started successfully
+[0m[0m[AudioStream] level worker started
+[0m[0m[XiaoZhi] state=1
+[0m[0m[XiaoZhi] identity device=cd:ab:78:56:34:12 client=d671c27c-d4d9-ac55-c0a9-fbe930a48a9e
+[0m[0m[VelaWear] Installed custom Skill: /data/agent/skills/velawear-wellness.md
+[0m[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m[0m[MVP] IMU state=静止 intensity=0.00
+[0m[0m[Power] mode=0 reason=BLE available
+[0m[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m[0m[AudioStream] level avg_abs=212 peak_abs=889 active=0
+[0m[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m[0m[AudioStream] level avg_abs=195 peak_abs=767 active=0
+[0m[0m[MVP] IMU state=活动 intensity=0.18
+[0m[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m

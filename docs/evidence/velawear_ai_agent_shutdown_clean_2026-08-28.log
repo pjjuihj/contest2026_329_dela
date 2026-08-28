@@ -1,0 +1,155 @@
+SFBL
+ABCD[0m[33mADC calibration data missing, use defaults
+[0m[0mADC calibration ratio=1068 offset=822
+[0m[0mADC /dev/adc0 init[0mINFO: LSM6DS3 test device registered as /dev/lsm6dsl0, INT=31
+[0m[0m[33mWARN: skip HAL_FLASH_Init during XIP bringup, NOR write/erase disabled
+[0m[0mINFO: NOR MTD registered at /dev/confi=2464 blocks=1024)
+[0mvelawear [10:100]
+
+NuttShell (NSH)
+nsh> [K[0m[VelaWear] Agent starting...
+[0m[0m[Config] Initialized imu=50Hz sedentary=3600s fall=2.5g queue=32
+[0m[0m[EventMgr] Initialized queue=32
+[0m[0m[StateMgr] Initialized
+[0m[0m[31;1m[LVGL] [User]	(3.408, +3408)	 check_stack_size: tid: 10, Stack size : 40856 lv_nuttx_entry.c:283
+[0m[0m[31;1m[LVGL] [User]	(3.410, +2)	 lv_nuttx_lcd_create: lcd /dev/lcd0 openi[0m[31;1m[LVGL] [User]	(3.412, +2)	 lv_nuttx_lcd_create: lcd /dev/lcd0 open success lv_nuttx_l[0m[31;1m[LVGL] [User]	(3.425, +13)	 lv_nuttx_touchscreen_create: touchscreen /dev/input0 opening lv_nuttx_touchscreen.c:79
+[0m[31;1m[LVGL] [User]	(3.428, +3)	 lv_nuttx_touchscreen_create: touchscreen /dev/input0 open success, maxpoint 1 lv_nuttx_touchscreen.c:98
+[0m[0m[33m[LVGL] [Warn]	(3.430, +2)	 lv_freetype_init: freetype already initialized lv_freetype.c:68
+[0m[0m[Display] Unified MiSans runtime font active
+[0m[0m[Display] Watchface and APP center initialized
+[0m[0mdev:0: Sending HCI_RESET
+[0m[0m[BLE] identity count=1 addr=CD:AB:78:56:34:12 (public)
+[0m[0m[BLE-HCI] tx opcode=0x2006 params=15
+[0m[0m[BLE-HCI] rx opcode=0x2006 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x2008 params=32
+[0m[0m[BLE-HCI] rx opcode=0x2008 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x2009 params=32
+[0m[0m[BLE-HCI] rx opcode=0x2009 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x200a params=1
+[0m[0m[BLE-HCI] rx opcode=0x200a status=0x00
+[0m[0m[BLE] advertising start ret=0 options=0x05
+[0m[0m[BLE] VelaWear GATT service registered; advertising
+[0m[0m[BLE] init result=0 available=1
+[0m[0m[Buttons] KEY2 input enabled
+[0m[0m[Decision] Added rule 'fall_detected' (layer=0, priority=3)
+[0m[0m[Decision] Added rule 'heart_rate_critical' (layer=0, priority=3)
+[0m[0m[Decision] Added rule 'battery_critical' (layer=0, priority=2)
+[0m[0m[Decision] Added rule 'sedentary_reminder' (layer=1, prior[0m[ActionMgr] Initialized
+[0m[0m[IMU] Initialized
+[0m[0m[Audio] Probing onboard MEMS microphone via direct AUDCODEC ADC
+[0m[0m[AudioTest] SF32LB52 AUDCODEC test begin
+[0m[0m[AudioTest] MICROPHONE: DMA sampling for 2 seconds
+[0mai_agent
+[0m[agent] AI Agent - Vela AI Agent starting (build: Aug 28 2026 20:32:32)
+[0m[0m[agent] [boot +4ms] P0: timezone set
+[0m[0m[agent] [boot +7ms] P0: storage ready
+[0m[0m[agent] [boot +8ms] heap: arena=8442016 free=7519160 used=922856
+[0m[0m[cfgstore] Config store ready at /data/agent/config/config.json
+[0m[0m[agent] [boot +11ms] P10m[bus] Message bus initialized (depth 16)
+[0m[0m[agent] [boot +13ms] P1: message_bus_init (rc=0)
+[0m[0m[memory] Initializing memory store at /data/agen[0m[memory] Created file: /data/agent/config/SOUL.md
+[0m[0m[memory] Created file: /data/agent/config/USER.md
+[0m[0m[memory] Created file: /data/agent/m[0m[memory] Created file: /data/agent/config/HEARTBEAT.md
+[0m[0m[memory] Created file: /data/agent/config/cron.json
+[0m[0m[memory] Created directory: /data/agent/memory/daily
+[0m[0m[memory] Memory store initialized successfully
+[0m[0m[agenized at /data/agent/sessions
+[0m[0m[agent] [boot +30ms] P1: [0m[0m[proxy] No proxy (direct connection)
+[0m[0m[agent] [boot +33ms] P2: http_proxy_init (rc=0)
+[0m[0m[33m[llm] No API key. Use CLI: set_llm <preset> <key>
+[0m[0m[agent] [boot +35ms] P3: llm_proxy_init (rc=0)er] Router initialized: 0 backends, profile=0
+[0m[0m[agent]  Use: set_tavily_key / set_search_key
+[0m[0m[tools] Registerr
+[0m[0m[tools] Registered tool: get_current_time
+[0m[0ml: read_file
+[0m[0m[tools] Registered tool: write_file
+[0stered tool: list_dir
+[0m[0m[tools] Registered tool: cron_adve
+[0m[0m[tools] Registered tool: fetch_url
+[0m[0m[tools0m[0m[tools] Registered tool: get_battery
+[0m[0m[tools] Regscreen_state
+[0m[0m[tools] Registered tool: get_heartrate
+[0m[0m[tools] Registered tool: get_steps
+[0m[0m[tools] Regshu_doc_create
+[0m[0m[tools] Registered tool: feishu_doc_wri[0m[0m[tools] Registered tool: feishu_doc_list
+[0m[0m[tools[0m[tools] Registered tool: music_resume
+[0m[0m[tools] Regis[0m[0m[tools] Registered tool: music_set_volume
+[0m[0m[toolapp
+[0m[0m[tools] Registered tool: exit_quickapp
+[0m[0m[tools] Tools JSON built (36 builtin + 0 providers)
+[0m[0m[tools] Tool registry initialized
+[0m[0m[agent] [boot +79mrd initialized (max_input=32768, rate_window=60s, rate_max=10)[0m[skills] Installed built-in skill: /data/agent/skills/weather.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/daily-briefing.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/skill-creator.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/system-health.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/reminder.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/note-taker.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/translate.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/news-digest.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/feishu-test.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/task-manager.md
+[0m[0m[skills] Skills system ready 0m[agent] [boot +107ms] P3: skill_loader_init (rc=0)
+[0m[0m[t_loop_init (rc=0)
+[0m[0m[cron] No cron file, starting fresh] P3: cron_service_init (rc=0)
+[0m[0m[heartbeat] Heartbeat sm[0m[agent] [boot +111ms] P3: heartbeat_init (rc=0)
+[0m[0m[_tts] Registered backend: volcengine
+[0m[0m[voice_asr] Registered backend: volcengine
+[0m[0m[agent] [boot +116ms] P3: voice_channel_init (rc=0)
+[0m[0mNSH commands registered
+[0mcommands_init (rc=0)
+[0m[0m[agent] [boot +119ms] P5: outbound dispatch thread started
+[0m[0m[agent] [boot +120ms] P5: quickapp mqueue listener started
+[0m[0m[cron] Cron started (0 [0m[heartbeat] Heartbeat started (every 30 min)
+[0m[0m[agen[0m[agent] [boot +124ms] P5: network_watch thread started (async)
+[0m[0m[agent] [boot +125ms] P6: nsh_commands_start (rc=0)
+[0m[0m[agent] [boot +125ms] AI Agent ready. Type 'help' in NSH for commands.
+[0m[0m[agent] Outbound dispatch started
+[0m[agent] Quickapp mqueue listener started
+[0m[0m[33m[agent] Quickapp mqueue disabled: bo[0m[agent] Network watcher started
+[0m[0m[33m[netmgr] No saved WiFi credentials. Use CLI: set_wifi <ssid> <pass>
+[0m[0m[cli] NSH CLI started. Type 'help' for commands.
+[0mvela> Exiting agent...
+[0m[cli] CLI thread exiting
+[0m[0m[agent] Network watcher cancelled during shutdown
+[0m[0m[agent] Shutdown requested — stopping services...
+[0m[0m[agent] Network watcher stopped
+[0m[0m[ws] WebSocket server stopped
+[0m[0m[AudioTest] MICROPHONE: DMA samples=32000 min=-3751 max=16049 avg_abs=230
+[0m[0m[AudioTest] MICROPHONE: DMA peak_abs=16049 above_1000=424 above_5000=38
+[0m[0m[AudioTest] complete
+[0m[0m[Audio] Onboard MEMS microphone ready via direct AUDCODEC ADC at 16000 Hz
+[0m[0m[LLM] Initialized (BLE cloud bridge + local fallback ready)
+[0m[0m[33m[Degrade] mode=independent reason=cloud disconnected
+[0m[0m[EventMgr] Registered handler for type 0
+[0m[0m[ActionMgr] Registered handler for type 7
+[0m[0m[ActionMgr] Registered handler for type 2
+[0m[0m[ActionMgr] Registered handler for type 3
+[0m[0m[ActionMgr[ActionMgr] Registered handler for type 1
+[0m[0m[ActionMgr] Registered handler for type 4
+[0m[0m[ActionMgr] Registered handler for type 5
+[0m[0m[ActionMgr] Registered handler for type 6
+[0m[0m[ActionMgr] Started
+[0m[0m[Decision] Started
+[0m[0m[ActionMgr] Thread started
+[0m[0m[Decision] Thread started
+[0m[0m[Watchdog] Hardware watchdog started (5000 ms)
+[0m[0m[Watchdog] Software monitor started
+[0m[0m[AudioStream] continuous MEMS capture started (16000 Hz, half=320 samples)
+[0m[0m[XiaoZhi] worke[[r00 mms[[tAXiaoZhiau]rd tiseotdSa tt(reoe=ta1am=][
+1 0[0m lmae[[uvM0deVmilP[o ]XiaoZhi=w ]1oI )rMikUd
+ ee[0msrnt t[asi0tttmeay[=r V静止tde eelidvaniWt
+cee[0mean=rscd:ab:78:56:34:12]i  tcXyli=ia0eo.nZ0th0=id671c27c-d4d9-ac55-c0a9-fbe930a48a9e 
+w[0m
+o[0mrker requested
+[0m[0m[VelaWear] Agent started successfully
+[0m[0m[VelaWear] Installed custom Skill: /data/agent/skills/velawear-wellness.md
+[0m[0m[Power] mode=0 reason=BLE available
+[0m[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m[0m[agent] Outbound dispatch exiting
+[0m[0m[cron] Cron service stopping
+[0m[0m[heartbeat] Heartbeat stopped
+[0m[0m[bus] Message bus destroyed
+[0m[0m[agent] Shutdown complete.
+[0mnsh> [K[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m[0m[AudioStream] level avg_abs=208 peak_abs=827 active=0
+[0m

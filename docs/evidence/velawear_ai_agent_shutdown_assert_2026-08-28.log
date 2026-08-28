@@ -1,0 +1,305 @@
+SFBL
+ABCD[0m[33mADC calibration data missing, use defaults
+[0m[0mADC calibration ratio=1068 offset=822
+[0m[0mADC /dev/adc0 init=0
+[0m[0mINFO: LSM6DS3 test device registered as /dev/lsm6dsl0, INT=31
+[0m[0m[33mWARN: skip HAL_FLASH_Init during XIP bringup, NOR write/erase disabled
+[0m[0mINFO: NOR MTD registered at /dev/confivelawear [10:100]
+
+NuttShell (NSH)
+nsh> [K[0m[VelaWear] Agent starting...
+[0m[0m[Config] Initialized imu=50Hz sedentary=3600s fall=2.5g queue=32
+[0m[0m[EventMgr] Initialized queue=32
+[0m[0m[StateMgr] Initialized
+[0m[0m[31;1m[LVGL] [User]	(3.409, +3409)	 check_stack_size: tid: 10, Stack size : 40856 lv_nuttx_entry.c:283
+[0m[0m[31;1m[LVGL] [User]	(3.412, +3)	 lv_nuttx_lcd_create: lcd /dev/lcd0 opening lv_nuttx_lcd.c:77
+[0m[0m[31;1m[LVGL] [User]	(3.414, +2)	 lv_nuttx_lcd_create: lcd /dev/lcd0 open success lv_nuttx_lcd.c:84
+[0m[0m[31;1m[LVGL] [User]	(3.426, +12)	 lv_nuttx_touchscreen_create: touchscreen /dev/input0 opening lv_nuttx_touchscreen.c:79
+[0m[0m[31;1m[LVGL] [User]	(3.429, +3)	 lv_nuttx_touchscreen_create: touchscreen /dev/input0 open success, maxpoint 1 lv_nuttx_touchscreen.c:98
+[0m[0m[33m[LVGL] [Warn]	(3.432, +3)	 lv_freetype_init: freetype already initialized lv_freetype.c:68
+[0m[0m[Display] Unified MiSans runtime font active
+[0mai_agent
+[0m[agent] AI Agent - Vela AI Agent starting (build: Aug 28 2026 17:17:42)
+[0m[0m[agent] [boot +4ms] P0: timezone set
+[0m[0m[agent] [boot +7ms] P0: storage ready
+[0m[0m[agent] [boot +9ms] heap: arena=8442040 free=7528584 used=913456
+[0m[0m[cfgstore] Config store ready at /data/agent/config/config.json
+[0m[0m[agent] [boot +23ms] P1[0m[bus] Message bus initialized (depth 16)
+[0m[0m[agent] [init (rc=0)
+[0m[0m[memory] Initializing memory store at /dat[0m[memory] Created file: /data/agent/config/SOUL.md
+[0m[0m[memory] Created file: /data/agent/config/USER.md
+[0m[0m[memory] Created file: /data/agent/memory/MEMORY.md
+[0m[0m[memory] Created file: /data/agent/config/HEARTBEAT.md
+[0m[0m[memory] Created file: /data/agent/config/cron.json
+[0m[0m[memory] Created directory: /data/agent/memory/daily
+[0m[0m[memory] Memory store initialized successfully
+[0m[0m[agent] [boot +74ms] P1: memory_store_init (rc=0)
+[0m[0m[session] Session manager initialized at /data/agent/sessions
+[0m[0m[agent] [boot +76ms] P1: session_mading proxy config...
+[0m[0m[proxy] No proxy (direct connection)
+[0m[0m[agent] [boot +90ms] P2: http_proxy_init (rc=0)
+[0m[0m[33m[llm] No API key. Use CLI: set_llm <preset> <key>
+[0m[0m[agent] [boot +95ms] P3: llm_proxy_init (rc=0)
+[0m[0m[llm_router] Router initialized: 0 backends, profile=0
+[0m[0m[uter_init (rc=0)
+[0m[0m[33m[web_search] No search key. Use: set_tavily_key / set_search_key
+[0m[0m[tools] Registered tool: web_search
+[0m[0m[tools] Registered tool: news_search
+[0m[0m[tools] Registered tool: get_weather
+[0m[0mget_current_time
+[0m[0m[tools] Registered tool: read_file
+[0m[0m[tools] Registered tool: write_file
+[0m[0m[tools] Registered tool: edit_file
+[0m[0m[tools] Registered tool: list_dir
+[0m[0m[tools] Registered tool: cron_add
+[0m[0m[tools] Registered tool: cron_list
+[0m[0m[tools] Registered tool: cron_remove
+[0m[0m[tools] Registered tool: fetch_url
+[0m[0m[tools] Registered tool: analyze_image
+[0m[0m[tools] Registered tool: run_shell
+[00m[tools] Registered tool: get_wear_state
+[0m[0m[tools] Registered tool: get_screen_state
+[0m[0m[tools] Registered tool: get_heartrate
+[0m[0m[tools] Registered tool: get_steps
+[0m[0m[tools] Registered tool: vibrate
+[0m[0m[tools] Registe] Registered tool: feishu_doc_write
+[0m[0m[tools] Registeredst
+[0m[0m[tools] Registered tool: feishu_chat_members
+[0m[0m[tools] Registered tool: feishu_send_mention
+[0m[0m[tools] Registered tool: music_search
+[0m[0m[tools] Registered tool: music_play
+[0m[0m[tools] Registered tool: music_pause
+[0m[0m[tools] Registered tool: music_resume
+[0m[0m[tools] Registered tool: music_stop
+[0m[0m[tools] Registered tool: music_seek
+[0m[0m[tools] Registered tool: music_set_volume
+[0m[0m[tools] Registered tool: music_status
+[0m[0m[tools] Registered tool: launch_quickapp
+[0m[0m[tools] Registered tool: exit_quickapp
+[0m[0m[tools] Tools JSON built (36 builtin + 0 providers)
+[0m[0m[tools] Tool registry initialized
+[0m[0m[agent] [boot +198ms] P3: tool_registry_init (rc=0)
+[0m[0m[Display] Watchface and APP center initialized
+[0m[0mdev:0: Sending HCI_RESET
+[0m[0m[guard] Tool guard initialized (max_input=32768, rate_window=60s, rate_max=10)
+[0m[0m[agent] [boot +1165ms] P3: tool_guard_init (rc=0)
+[0m[0m[skills] Initializing skills system
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/weather.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/daily-briefing.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/skill-creator.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/system-health.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/reminder.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/note-taker.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/translate.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/news-digest.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/feishu-test.md
+[0m[0m[skills] Installed built-in skill: /data/agent/skills/task-manager.md
+[0m[0m[skills] Skills system ready (10 built-in)
+[0m[0m[agent] [boot +1194ms] P3: skill_loader_init (rc=0)
+[0m[0m[agent] Agent loop initialized
+[0m[0m[agent] [boot +1195ms] P3: agent_loop_init (rc=0)
+[0m[0m[cron] No cron file, starting fresh
+[0m[0m[agent] [boot +1197ms] P3: cron_service_init (rc=0)
+[0m[0m[heartbeat] Heartbeat service initialized (file: /data/agent/HEARTBEAT.md, interval: 1800s)
+[0m[
+[0m[0m[voice] Voice channel initializing
+[0m[0m[voice_t[0m[voice_asr] Registered backend: volcengine
+[0m[0m[agent] [boot +1203ms] P3: voice_channel_init (rc=0)
+[0m[0mNSH commands registered
+[0m[0m[agentommands_init (rc=0)
+[0m[0m[agent] [boot +1206ms] P5: outbound dispatch thread started
+[0m[0m[agent] [boot +1207ms] P5: quickapp mqueue listener started
+[0m[0m[cron] Cron started (0 jobs, interval 10s)
+[0m[0m[heartbeat] Heartbeat started (every 30 min)
+[0m[0m[agent] [boot +1210ms] P5: cron + heartbeat started
+[0m[0m[agent] [boot +1211ms] P5: network_watch thread started (async)
+[0m[0m[agent] [boot +1212ms] P6: nsh_commands_start (rc=0)
+[0m[0m[agent] [boot +1213ms] AI Agent ready. Type 'help' in NSH for commands.
+[0m[0m[agent] Outbound dispatch started
+[0m[0m[agent] Quickapp mqueue listener started
+[0m[0m[33m[agent] Quickapp mqueue disabled: board message-size limit is smaller than th[0m[agent] Network watcher started
+[0m[0m[33m[netmgr] No saved WiFi credentials. Use CLI: set_wifi <ssid> <pass>
+[0m[0m[cli] NSH CLI started. Type 'help' for commands.
+[0mvela> Available commands:
+  net_status           - Show network connection status
+  net_test             - Test HTTPS connection to Baidu
+  set_feishu_app <app_id> <app_secret>  - Set Feishu app credentials
+  set_feishu_user_token <token>  - Set Feishu user_accer doc APIs
+  set_llm <preset|host> [model] [key] - Switch LLM ba <preset|host> [model] [key] - Set independent vision model
+  lidels (openrouter)
+  memory_read          - Read MEMORY.md
+  memory_write <text>  - Write MEMORY.md (quote text)
+  session_list         - List sessions
+  session_clear <id>   - Clear a session
+  session_clear_all    - Clear all sessions
+  heap_info            - Show memory usage
+  set_proxy <host> <port> - Set HTTP proxemove proxy config
+  set_wifi <ssid> <pw> - Connect to WiFi (real hardware; saved for reboot)
+  wifi_reconnect       - Re-join WiFi using saved credentials
+  set_search_key <key> - Set SerpAPI (Google) key
+  set_exa_key <key>    - Set Exa AI search key
+  set_tavily_key <key> - Set Tavily search key
+  set_news_key <key>   - Set NewsAPI key
+  set_tavily_key <key> - Set Tavily AI sear - Show current configuration
+  config_reset         - Clear all runtime config
+  ask <text>           - Chat with AI Agent
+  heartbeat_trigger    - Manually trigger heartbeat check
+  cron_start           - Start cron scheduler
+  restart              - Restart the device
+  quit          agent
+  set_mqtt <broker> [client_id] - Set MQTT broker (host:po  set_volc_key <api_key>       - Set Doubao voice API key
+  set_luster> - Set ASR credentials
+  set_volc_speaker <id>  - Set TTS voice (e.g. zh_female_cancan)
+  voice_start            - Start voice channel
+  voice_stop             - Stop voice channel
+  voice_test_tts <text> [out.pcm] - Test TTS synthesis
+  voice_test_asr <file>  - Test ASR recognition
+  set_voice_tts <name>   - Switch TTS backend
+  set_voice_asritch ASR backend
+  set_weixin_token <tok> - Set WeChat bot token
+  weixin_login           - QR code login to WeChat
+  router_status          - Show LLM router status
+  router_set <preset> <key> - Add LLM backend (deepseek/kimi/qwen/openai...)
+  router_model <idx> <model> - Change model f  router_profile <p>     - Set routing profile (eco/auto/premium <pkg>     - Test launch a QuickApp by package name
+  exit_app  t current QuickApp and go home
+  install_skill <name> <url|-> - stdin
+  help                 - This message
+vela> [0m[BLE] identity count=1 addr=CD:AB:78:56:34:12 (public)
+[0m[0m[BLE-HCI] tx opcode=0x2006 params=15
+[0m[0m[BLE-HCI] rx opcode=0x2006 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x2008 params=32
+[0m[0m[BLE-HCI] rx opcode=0x2008 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x2009 params=32
+[0m[0m[BLE-HCI] rx opcode=0x2009 status=0x00
+[0m[0m[BLE-HCI] tx opcode=0x200a params=1
+[0m[0m[BLE-HCI] rx opcode=0x200a status=0x00
+[0m[0m[BLE] advertising start ret=0 options=0x05
+[0m[0m[BLE] VelaWear GATT service registered; advertising
+0m[0m[Buttons] KEY2 input enabled
+[0m[0m[Decision] Added rule 'fall_detected' (layer=0, priority=3)
+[0m[0m[Decision] Added rule 'heart_rate_critical' (layer=0, priority=3)
+[0m[0m[Decision] Added rule 'battery_critical' (layer=0, priority=2)
+[0m[0m[Decision] Added rule 'sules
+[0m[0m[ActionMgr] Initialized
+[0m[0m[IMU] Initialized
+[0m[0m[Audio] Probing onboard MEMS microphone via direct AUDCODEC ADC
+[0m[0m[AudioTest] SF32LB52 AUDCODEC test begin
+[0m[0m[AudioTest] MICROPHONE: DMA sampling for 2 seconds
+[0m=== Current Configuration ===
+  Feishu AppID  : (not set)
+  Feishu Secret : (not set)
+  API Key       : (not set)
+  Model         : (not set)
+  LLM Host      : (not set)
+  LLM Path      : (not set)
+  Vision Model  : (not set)
+  Vision Host   : (not set)
+  Vision Key    : (not set)
+  Proxy Host    : (not set)
+  Proxy Port    : (not set)
+  SerpAPI Key   : (not set)
+  Exa Key       : (not set)
+  Tavily Key    : (not set)
+  News Key      : (not set)
+  Tavily Key    : (not set)
+  Gateway       : (not set)
+  GW Port       : (not set)
+  GW Token      : (not set)
+  MQTT Broker   : (not set)
+  Volc AppKey   : (not set)
+  Volc Token    : (not set)
+  Volc API Key  : (not set)
+  Volc Speaker  : (not set)
+Network: disconnected / 0.0.0.0
+=============================
+vela> [0m[AudioTest] MICROPHONE: DMA samples=32000 min=-12590 max=30789 avg_abs=726
+[0m[0m[AudioTest] MICROPHONE: DMA peak_abs=30789 above_1000=5279 above_5000=837
+[0m[0m[AudioTest] complete
+[0m[0m[Audio] Onboard MEMS microphone ready via direct AUDCODEC ADC at 16000 Hz
+[0m[0m[LLM] Initialized (BLE cloud bridge + local fallback ready)
+[0m[0m[33m[Degrade] mode=independent reason=cloud disconnected
+[0m[0m[EventMgr] Registered handler for type 0
+[0m[0m[ActionMgr] Registered handler for type 7
+[0m[0m[ActionMgr] Registered handler for type 2
+[0m[0m[ActionMgr] Registered handler for type 3
+[0m[0m[ActionMgr] Registered handler for type 8
+[0m[0m[ActionMgr] Registered handler for type 1
+[0m[0m[ActionMgr] Registered handler for type 4
+[0m[0m[ActionMgr] Registered handler for type 5
+[0m[0m[ActionMgr] Registered handler for type 6
+[0m[0m[ActionMgr] Started
+[0m[0m[Decision] Started
+[0m[0m[Watchdog] Hardware watchdog started (5000 ms)
+[0m[0m[ActionMgr] Thread started
+[0m[0m[Decision] Thread started
+[0m[0m[Watchdog] Software monitor started
+[0m[0m[AudioStream] continuous MEMS capture started (16000 Hz, half=320 samples)
+[0m[0m[XiaoZhi] worker started (ota=1 audio=1)
+[0m[0m[VelaWear] XiaoZhi worker requested
+[0m[0m[VelaWear] Agent started successfully
+[0m[0m[AudioStream] level worker started
+[0m[0m[XiaoZhi] state=1
+[0m[0m[XiaoZhi] identity device=cd:ab:78:56:34:12 client=d671c27c-d4d9-ac55-c0a9-fbe930a48a9e
+[0m[0m[VelaWear] Installed custom Skill: /data/agent/skills/velawear-wellness.md
+[0m[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m[0m[MVP] IMU state=静止 intensity=0.00
+[0m[0m[Power] mode=0 reason=BLE available
+[0m[0m[33m[cron] Cron task already running
+[0mCron scheduler started.
+vela> Exiting agent...
+[0m[cli] CLI thread exiting
+[0m[0m[agent] Shutdown requested — stopping services...
+[0m[0m[ws] WebSocket server stopped
+[0m[0m[cron] Cron service stopping
+[0m[0m[heartbeat] Heartbeat stopped
+[0m[0m[agent] Outbound dispatch exiting
+[0m[0m[31m[XiaoZhi] TCP connect api.tenclass.net:443 failed: -0x0052
+[0m[0m[bus] Message bus destroyed
+[0m[0m[agent] Shutdown complete.
+[0mnsh> [Kdump_assert_info: Current Version: NuttX  0.0.0 dd92bcf4257-dirty Aug 28 2026 17:17:42 arm
+dump_assert_info: Assertion failed : at file: /mm/mm_heap/mm_free.c:244 task: ai_agent process: Kernel 0x120a6ea5
+up_dump_register: R0: 200191f0 R1: 000000f4 R2: 20018d74  R3: 00000000
+up_dump_register: R4: 600d81a0 R5: 00000000 R6: 121ac31f  R7: 600df358
+up_dump_register: R8: 20018d04 R9: 00000080 R10: 00000006 R11: 000000f4
+up_dump_register: R12: 00000000 SP: 600df160 LR: 1201582d  PC: 1201582d
+up_dump_register: xPSR: 2000000b BASEPRI: 00000080 CONTROL: 00000000
+up_dump_register: EXC_RETURN: 00000000
+sched_dumpstack: backtrace:
+sched_dumpstack: [19] [<0x1202aa86>] up_backtrace+0x41/0xf0
+sched_dumpstack: [19] [<0x12014d2c>] sched_dumpstack+0x1f/0x6c
+sched_dumpstack: [19] [<0x1201596e>] _assert+0x171/0x270
+sched_dumpstack: [19] [<0x12013bea>] arm_svcall+0x1d/0x2c
+sched_dumpstack: [19] [<0x120134f0>] arm_doirq+0x63/0x70
+sched_dumpstack: [19] [<0x12013cb2>] __assert+0x25/0x30
+sched_dumpstack: [19] [<0x1205785e>] mm_forcefree+0x49/0x258
+sched_dumpstack: [19] [<0x1204e652>] env_release+0x35/0x44
+sched_dumpstack: [19] [<0x120192a8>] task_uninit_info+0xa3/0xdc
+sched_dumpstack: [19] [<0x12017afc>] group_leave+0xab/0xd8
+sched_dumpstack: [19] [<0x12018e64>] nxtask_exithook+0x11f/0x144
+sched_dumpstack: [19] [<0x12063a4a>] nx_pthread_exit+0x75/0x8c
+sched_dumpstack: [19] [<0x1204fd1a>] pthread_exit+0sched_dumpstack: [19] [<0x1204fdbe>] leave_cancellation_point+0x25/0x34
+sched_dumpstack: [19] [<0x1206499e>] clock_nanosleep+0x2d/0x3c
+sched_dumpstack: [19] [<0x12054322>] sleep+0x19/0x38
+sched_dumpstack: [19] [<0x120a6fc4>] heartbeat_thread+0x13/0x20
+sched_dumpstack: [19] [<0x1207addc>] pthread_startup+0xf/0x1c
+sched_dumpstack: [19] [<0x1207c108>] pthread_start+0x33/0x54
+sched_dumpstack: backtrace:
+sched_dumpstack: [19] [<0x1202aa86>] up_backtrace+0x41/0xf0
+sched_dumpstack: [19] [<0x12014d2c>] sched_dumpstack+0x1f/0x6c
+sched_dumpstack: [19] [<0x12013d3a>] abort+0x51/0x60
+sched_dumpstack: [19] [<0x12013ca8>] __assert+0x1b/0x30
+sched_dumpstack: [19] [<0x1205785e>] mm_forcefree+0x49/0x258
+sched_dumpstack: [19] [<0x1204e652>] env_release+0x35/0x44
+sched_dumpstack: [19] [<0x120192a8>] task_uninit_info+0xa3/0xdc
+sched_dumpstack: [19] [<0x12017afc>] group_leave+0xab/0xd8
+sched_dumpstack: [19] [<0x12018e64>] nxtask_exithook+0x11f/0x144
+sched_dumpstack: [19] [<0x12063a4a>] nx_pthread_exit+0x75/0x8c
+sched_dumpstack: [19] [<0x1204fd1a>] pthread_exit+0x25/0x2c
+sched_dumpstack: [19] [<0x1204fdbe>] leave_cancellation_point+0x25/0x34
+sched_dumpstack: [19] [<0x1206499e>] clock_nanosleep+0x2d/0x3c
+sched_dumpstack: [19] [<0x12054322>] sleep+0x19/0x38
+sched_dumpstack: [19] [<0x120a6fc4>] heartbeat_thread+0x13/0x20
+sched_dumpstack: [19] [<0x1207addc>] pthread_startup+0xf/0x1c
+sched_dumpstack: [19] [<0x1207c108>] pthread_start+0x33/0x54
+[0m[AudioStream] level avg_abs=192 peak_abs=666 active=0
+[0mSFBL
