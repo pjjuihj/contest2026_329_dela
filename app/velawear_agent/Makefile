@@ -21,5 +21,6 @@ CSRCS    += config/velawear_config.c
 CSRCS    += drivers/imu_sensor.c
 CSRCS    += drivers/velawear_llm.c
 CSRCS    += drivers/audio_sensor.c
+CSRCS    += skills/velawear_wellness_skill.c
 
 include $(APPDIR)/Application.mk

@@ -5,6 +5,7 @@
 config LVX_USE_DEMO_CONTEST2026_329_VELAWEAR_AGENT
 	bool "Contest 2026 team 329 VelaWear Agent"
 	default n
+	select EXAMPLES_AI_AGENT_VELA
 	depends on !LVX_USE_DEMO_CONTEST2026_000_HELLO_APP
 	---help---
 		Enable VelaWear Agent - an AI-powered wearable agent that provides
@@ -15,6 +16,7 @@ if LVX_USE_DEMO_CONTEST2026_329_VELAWEAR_AGENT
 
 config VELAWEAR_IMU_SAMPLE_RATE_HZ
 	int "IMU sample rate in Hz"
+	range 1 200
 	default 50
 	---help---
 		IMU accelerometer/gyroscope sampling frequency in Hz.
@@ -23,6 +25,7 @@ config VELAWEAR_IMU_SAMPLE_RATE_HZ
 
 config VELAWEAR_SEDENTARY_THRESHOLD_SEC
 	int "Sedentary alert threshold in seconds"
+	range 10 3600
 	default 3600
 	---help---
 		How long (in seconds) of continuous inactivity before triggering
@@ -30,6 +33,7 @@ config VELAWEAR_SEDENTARY_THRESHOLD_SEC
 
 config VELAWEAR_FALL_ACCEL_THRESHOLD_G
 	int "Fall detection acceleration threshold (x10 G)"
+	range 1 100
 	default 25
 	---help---
 		Fall detection triggers when acceleration exceeds this value
@@ -37,8 +41,87 @@ config VELAWEAR_FALL_ACCEL_THRESHOLD_G
 
 config VELAWEAR_EVENT_QUEUE_SIZE
 	int "Event queue size"
+	range 1 64
 	default 32
 	---help---
 		Maximum number of events that can be queued simultaneously.
+
+config VELAWEAR_XIAOZHI
+	bool "Enable XiaoZhi client"
+	default y
+	depends on NET
+	depends on CRYPTO_MBEDTLS
+	depends on NETUTILS_CJSON
+	---help---
+		Enable the NuttX port of the XiaoZhi voice assistant protocol used by
+		the Huangshan Pi firmware.  The client performs OTA activation and
+		connects to the XiaoZhi WebSocket endpoint.
+
+if VELAWEAR_XIAOZHI
+
+config VELAWEAR_XIAOZHI_AUDIO
+	bool "Enable XiaoZhi Opus audio"
+	default y
+	select LIB_OPUS
+	---help---
+		Enable Opus microphone uplink and speaker downlink using the
+		VelaWear SF32LB52 AUDCODEC stream path.
+
+config VELAWEAR_XIAOZHI_OTA
+	bool "Use XiaoZhi OTA activation exchange"
+	default y
+	---help---
+		Query the XiaoZhi OTA endpoint before opening the WebSocket.  An
+		unbound device prints its activation code and polls until activated.
+
+config VELAWEAR_XIAOZHI_AUTOSTART
+	bool "Autostart XiaoZhi with VelaWear"
+	default y
+	---help---
+		Start the XiaoZhi worker when the VelaWear application starts.
+
+config VELAWEAR_XIAOZHI_PAN
+	bool "Use Bluetooth PAN transport for XiaoZhi"
+	default y
+	depends on BT_CLASSIC
+	depends on NET
+	select NET_TUN
+	select NETUTILS_DHCPC
+	select NETUTILS_NETLIB
+	---help---
+		Bridge the classic Bluetooth PANU link to a NuttX TAP interface.
+		XiaoZhi TCP/WebSocket traffic then uses the phone's NAP connection.
+
+if VELAWEAR_XIAOZHI_PAN
+
+config VELAWEAR_XIAOZHI_PAN_PEER
+	string "Bluetooth PAN peer address"
+	default ""
+	---help---
+		Classic Bluetooth address of the paired phone NAP, for example
+		01:23:45:67:89:AB. Empty means wait without auto-connecting.
+
+endif # VELAWEAR_XIAOZHI_PAN
+
+config VELAWEAR_XIAOZHI_HOST
+	string "XiaoZhi WebSocket host"
+	default "api.tenclass.net"
+
+config VELAWEAR_XIAOZHI_PATH
+	string "XiaoZhi WebSocket path"
+	default "/xiaozhi/v1/"
+
+config VELAWEAR_XIAOZHI_TOKEN
+	string "XiaoZhi fallback authorization token"
+	default "Bearer 12345678"
+
+config VELAWEAR_XIAOZHI_DEVICE_ID
+	string "XiaoZhi device id override"
+	default ""
+	---help---
+		Optional colon-separated Bluetooth address.  Leave empty to derive
+		it from the local Bluetooth adapter at runtime.
+
+endif # VELAWEAR_XIAOZHI
 
 endif # LVX_USE_DEMO_CONTEST2026_329_VELAWEAR_AGENT

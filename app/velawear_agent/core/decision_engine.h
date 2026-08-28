@@ -33,7 +33,8 @@
 /* Rule callback types */
 
 typedef bool (*rule_condition_t)(velawear_state_t *state,
-                                 velawear_event_t *event);
+                                 velawear_event_t *event,
+                                 void *context);
 typedef int (*rule_action_t)(velawear_state_t *state, void *context);
 
 /* Rule structure */
@@ -61,7 +62,12 @@ typedef struct velawear_engine
   pthread_mutex_t lock;
   velawear_config_t *config;
   velawear_actions_t *actions;
+  velawear_state_mgr_t *state_mgr;
+  velawear_events_t *events;
+  int sedentary_rule_id;
   uint32_t last_sedentary_reminder;
+  uint32_t last_heart_rate_alert;
+  uint32_t last_battery_alert;
 } velawear_engine_t;
 
 /****************************************************************************
@@ -72,6 +78,10 @@ int decision_engine_init(velawear_engine_t *engine, velawear_config_t *config);
 int decision_engine_start(velawear_engine_t *engine);
 int decision_engine_set_action_manager(velawear_engine_t *engine,
                                         velawear_actions_t *actions);
+int decision_engine_set_state_manager(velawear_engine_t *engine,
+                                      velawear_state_mgr_t *state_mgr);
+int decision_engine_set_event_manager(velawear_engine_t *engine,
+                                      velawear_events_t *events);
 void decision_engine_cleanup(velawear_engine_t *engine);
 
 int decision_engine_add_rule(velawear_engine_t *engine,

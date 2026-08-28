@@ -16,7 +16,7 @@
 
 #include <nuttx/config.h>
 #include <pthread.h>
-#include <mqueue.h>
+#include <nuttx/mqueue.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -24,7 +24,9 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-#define EVENT_QUEUE_SIZE        64
+#define EVENT_QUEUE_NAME        "/velawear_events"
+#define EVENT_QUEUE_SIZE_MAX    64
+#define EVENT_POOL_SIZE         16
 #define EVENT_HANDLER_MAX       16
 
 /****************************************************************************
@@ -51,17 +53,25 @@ typedef struct velawear_events
 {
   pthread_t thread;
   bool running;
-  mqd_t queue;
+  /* Keep the queue as a file object so producers running outside the
+   * VelaWear task group (for example the Bluetooth system workqueue) can
+   * submit events with the internal file_mq_* APIs. */
+  struct file queue;
+  bool queue_open;
+  int queue_size;
   event_handler_entry_t handlers[EVENT_HANDLER_MAX];
   int handler_count;
   pthread_mutex_t lock;
+  pthread_mutex_t pool_lock;
+  velawear_event_t pool[EVENT_POOL_SIZE];
+  bool pool_used[EVENT_POOL_SIZE];
 } velawear_events_t;
 
 /****************************************************************************
  * Function Prototypes
  ****************************************************************************/
 
-int event_manager_init(velawear_events_t *events);
+int event_manager_init(velawear_events_t *events, int queue_size);
 int event_manager_start(velawear_events_t *events);
 void event_manager_cleanup(velawear_events_t *events);
 

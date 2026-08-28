@@ -17,6 +17,7 @@
 #include <nuttx/config.h>
 #include <nuttx/compiler.h>
 #include <sys/types.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <pthread.h>
@@ -70,6 +71,7 @@
 #define VELAWEAR_EVENT_TIMER        9
 #define VELAWEAR_EVENT_USER_ACTION  10
 #define VELAWEAR_EVENT_SYSTEM       11
+#define VELAWEAR_EVENT_CHAT_INPUT   12
 
 /* Action types */
 
@@ -81,6 +83,7 @@
 #define VELAWEAR_ACTION_CALL_LLM    5
 #define VELAWEAR_ACTION_SET_TIMER   6
 #define VELAWEAR_ACTION_LOG         7
+#define VELAWEAR_ACTION_PLAY_VOICE  8
 
 /* Priority levels */
 
@@ -117,12 +120,30 @@ typedef struct velawear_event
         {
           char text[256];
           int length;
+          uint32_t avg_abs;
+          uint32_t peak_abs;
+          bool active;
         } audio;
       struct
         {
           char data[512];
           int length;
         } ble;
+      struct
+        {
+          uint16_t stream_id;
+          uint32_t sample_count;
+        } voice;
+      struct
+        {
+          char text[256];
+          int length;
+        } chat;
+      struct
+        {
+          bool connected;
+          char device_name[64];
+        } ble_state;
       struct
         {
           int x;
@@ -197,6 +218,16 @@ typedef struct velawear_action
         {
           char prompt[1024];
         } llm;
+      struct
+        {
+          uint32_t duration_ms;
+          int id;
+        } timer;
+      struct
+        {
+          uint16_t stream_id;
+          uint32_t sample_count;
+        } voice;
     } params;
 } velawear_action_t;
 
@@ -229,6 +260,13 @@ typedef struct velawear_audio
   int fd;
   bool initialized;
   int sample_rate;
+  pthread_t thread;
+  bool thread_started;
+  volatile bool stream_running;
+  void *events;
+  bool level_active;
+  uint32_t latest_avg_abs;
+  uint32_t latest_peak_abs;
 } velawear_audio_t;
 
 /****************************************************************************
@@ -237,8 +275,8 @@ typedef struct velawear_audio
 
 #include "core/event_manager.h"
 #include "core/action_manager.h"
-#include "core/decision_engine.h"
 #include "core/state_manager.h"
+#include "core/decision_engine.h"
 #include "display_manager.h"
 #include "drivers/imu_sensor.h"
 
@@ -271,6 +309,12 @@ typedef struct velawear_agent
   pthread_t watchdog_thread;
   bool watchdog_thread_started;
   volatile uint32_t watchdog_last_main_ms;
+  uint32_t started_ms;
+  pthread_mutex_t timer_lock;
+  bool timer_lock_initialized;
+  bool timer_active;
+  uint32_t timer_deadline_ms;
+  int timer_id;
 } velawear_agent_t;
 
 /****************************************************************************
@@ -282,8 +326,11 @@ void velawear_config_cleanup(velawear_config_t *config);
 
 int velawear_llm_init(velawear_llm_t *llm);
 void velawear_llm_cleanup(velawear_llm_t *llm);
+int velawear_llm_request(velawear_llm_t *llm, const char *prompt,
+                         char *response, size_t response_size);
 
 int audio_sensor_init(velawear_audio_t *audio);
+int audio_sensor_start(velawear_audio_t *audio, void *events);
 void audio_sensor_cleanup(velawear_audio_t *audio);
 
 #endif /* __VELAWEAR_H */

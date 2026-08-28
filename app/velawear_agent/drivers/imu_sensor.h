@@ -82,6 +82,10 @@ typedef struct imu_sensor
   int buffer_index;
   motion_state_t motion;
   fall_detector_t fall_detector;
+  float gravity_x;
+  float gravity_y;
+  float gravity_z;
+  bool gravity_valid;
   float threshold_move;
   float threshold_run;
   float threshold_fall;

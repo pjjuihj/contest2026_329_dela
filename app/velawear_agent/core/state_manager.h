@@ -58,6 +58,9 @@ void state_manager_update_heart_rate(velawear_state_mgr_t *mgr,
                                      float heart_rate);
 void state_manager_update_ble(velawear_state_mgr_t *mgr,
                               bool connected, const char *device_name);
+void state_manager_update_runtime(velawear_state_mgr_t *mgr,
+                                  uint32_t uptime_seconds,
+                                  uint32_t free_memory);
 void state_manager_register_callback(velawear_state_mgr_t *mgr,
                                      state_change_cb_t callback,
                                      void *context);

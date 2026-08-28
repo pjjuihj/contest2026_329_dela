@@ -163,6 +163,12 @@ int state_manager_update_from_event(velawear_state_mgr_t *mgr,
         notify_callbacks(mgr);
         break;
 
+      case VELAWEAR_EVENT_BLE_STATE:
+        state_manager_update_ble(mgr,
+                                 event->data.ble_state.connected,
+                                 event->data.ble_state.device_name);
+        break;
+
       default:
         /* Events without state payload still pass through this API. */
         break;
@@ -189,15 +195,36 @@ void state_manager_update_ble(velawear_state_mgr_t *mgr,
   pthread_mutex_lock(&mgr->lock);
 
   mgr->state.ble_connected = connected;
-  if (device_name)
+  if (connected && device_name != NULL)
     {
       strncpy(mgr->state.ble_device_name, device_name,
               sizeof(mgr->state.ble_device_name) - 1);
+      mgr->state.ble_device_name[sizeof(mgr->state.ble_device_name) - 1] =
+        '\0';
+    }
+  else if (!connected)
+    {
+      mgr->state.ble_device_name[0] = '\0';
     }
 
   pthread_mutex_unlock(&mgr->lock);
 
   notify_callbacks(mgr);
+}
+
+void state_manager_update_runtime(velawear_state_mgr_t *mgr,
+                                  uint32_t uptime_seconds,
+                                  uint32_t free_memory)
+{
+  if (mgr == NULL)
+    {
+      return;
+    }
+
+  pthread_mutex_lock(&mgr->lock);
+  mgr->state.uptime_seconds = uptime_seconds;
+  mgr->state.free_memory = free_memory;
+  pthread_mutex_unlock(&mgr->lock);
 }
 
 void state_manager_register_callback(velawear_state_mgr_t *mgr,

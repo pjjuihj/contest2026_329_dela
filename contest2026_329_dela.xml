@@ -10,6 +10,9 @@
 
   <project path="contest2026_329_dela" name="contest2026_329_dela">
     <linkfile src="app/hello_app" dest="packages/demos/contest2026_329_hello_app"/>
+    <linkfile src="app/velawear_agent" dest="packages/demos/contest2026_329_velawear_agent"/>
+
+
     <linkfile src="quickapp/hello_quickapp" dest="packages/apps/contest2026_329_hello_quickapp"/>
     <linkfile src="board/contest_board" dest="vendor/openvela/boards/contest2026_329_board"/>
   </project>

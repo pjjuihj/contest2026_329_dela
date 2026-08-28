@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <syslog.h>
 #include <pthread.h>
-#include <mqueue.h>
+#include <nuttx/mqueue.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -102,18 +102,19 @@ int event_manager_dispatch(velawear_events_t *events,
 }
 
 
-int event_manager_init(velawear_events_t *events)
+int event_manager_init(velawear_events_t *events, int queue_size)
 {
   struct mq_attr attr;
   int ret;
 
-  if (events == NULL)
+  if (events == NULL || queue_size < 1 || queue_size > EVENT_QUEUE_SIZE_MAX)
     {
       return VELAWEAR_ERR_INVAL;
     }
 
   memset(events, 0, sizeof(velawear_events_t));
-  events->queue = (mqd_t)-1;
+  events->queue_open = false;
+  events->queue_size = queue_size;
 
   /* Initialize mutex */
 
@@ -123,10 +124,17 @@ int event_manager_init(velawear_events_t *events)
       return VELAWEAR_ERR_IO;
     }
 
+  ret = pthread_mutex_init(&events->pool_lock, NULL);
+  if (ret != 0)
+    {
+      pthread_mutex_destroy(&events->lock);
+      return VELAWEAR_ERR_IO;
+    }
+
   /* Create message queue */
 
   attr.mq_flags = 0;
-  attr.mq_maxmsg = EVENT_QUEUE_SIZE;
+  attr.mq_maxmsg = queue_size;
   /* Keep the mqueue payload within CONFIG_MQ_MAXMSGSIZE.  Events are
    * copied through heap-backed pointers so the full event union can
    * remain available to handlers. */
@@ -135,21 +143,24 @@ int event_manager_init(velawear_events_t *events)
 
   /* A crashed instance may leave pointer messages behind.  Remove the
    * old queue before creating a fresh one for this process. */
-  mq_unlink("/velawear_events");
+  mq_unlink(EVENT_QUEUE_NAME);
 
-  events->queue = mq_open("/velawear_events", O_CREAT | O_RDWR, 0644,
-                          &attr);
-  if (events->queue == (mqd_t)-1)
+  ret = file_mq_open(&events->queue, EVENT_QUEUE_NAME,
+                     O_CREAT | O_RDWR, 0644, &attr);
+  if (ret < 0)
     {
       syslog(LOG_ERR, "[EventMgr] Failed to create message queue: %d\n",
-             errno);
+             -ret);
+      pthread_mutex_destroy(&events->pool_lock);
+      pthread_mutex_destroy(&events->lock);
       return VELAWEAR_ERR_IO;
     }
 
+  events->queue_open = true;
   events->running = false;
   events->handler_count = 0;
 
-  syslog(LOG_INFO, "[EventMgr] Initialized\n");
+  syslog(LOG_INFO, "[EventMgr] Initialized queue=%d\n", queue_size);
   return VELAWEAR_OK;
 }
 
@@ -189,12 +200,14 @@ void event_manager_cleanup(velawear_events_t *events)
       pthread_join(events->thread, NULL);
     }
 
-  if (events->queue != (mqd_t)-1)
+  if (events->queue_open)
     {
-      mq_close(events->queue);
-      mq_unlink("/velawear_events");
+      file_mq_close(&events->queue);
+      mq_unlink(EVENT_QUEUE_NAME);
+      events->queue_open = false;
     }
 
+  pthread_mutex_destroy(&events->pool_lock);
   pthread_mutex_destroy(&events->lock);
 
   syslog(LOG_INFO, "[EventMgr] Cleaned up\n");
@@ -202,29 +215,53 @@ void event_manager_cleanup(velawear_events_t *events)
 
 int event_manager_push(velawear_events_t *events, velawear_event_t *event)
 {
-  velawear_event_t *copy;
   uintptr_t message;
+  int slot = -1;
   int ret;
 
-  if (events->queue == (mqd_t)-1 || event == NULL)
+  if (events == NULL || !events->queue_open || event == NULL)
     {
       return VELAWEAR_ERR_IO;
     }
 
-  copy = (velawear_event_t *)malloc(sizeof(*copy));
-  if (copy == NULL)
+  pthread_mutex_lock(&events->pool_lock);
+  /* Keep one pool slot for an Agent command.  Sensor producers must not
+   * prevent a connected BLE client from acknowledging or changing state. */
+  for (int i = 0; i < EVENT_POOL_SIZE - 1; i++)
+    {
+      if (!events->pool_used[i])
+        {
+          slot = i;
+          events->pool_used[i] = true;
+          memcpy(&events->pool[i], event, sizeof(*event));
+          break;
+        }
+    }
+
+  if (slot < 0 && event->type == VELAWEAR_EVENT_BLE_MSG &&
+      !events->pool_used[EVENT_POOL_SIZE - 1])
+    {
+      slot = EVENT_POOL_SIZE - 1;
+      events->pool_used[slot] = true;
+      memcpy(&events->pool[slot], event, sizeof(*event));
+    }
+  pthread_mutex_unlock(&events->pool_lock);
+
+  if (slot < 0)
     {
       return VELAWEAR_ERR_NOMEM;
     }
 
-  memcpy(copy, event, sizeof(*copy));
-  message = (uintptr_t)copy;
-  ret = mq_send(events->queue, (const char *)&message,
-                sizeof(message), event->priority);
+  /* The queue carries a stable pool slot, not a heap pointer. */
+  message = (uintptr_t)(slot + 1);
+  ret = file_mq_send(&events->queue, (const char *)&message,
+                     sizeof(message), event->priority);
   if (ret < 0)
     {
-      free(copy);
-      syslog(LOG_WARNING, "[EventMgr] Failed to push event: %d\n", errno);
+      pthread_mutex_lock(&events->pool_lock);
+      events->pool_used[slot] = false;
+      pthread_mutex_unlock(&events->pool_lock);
+      syslog(LOG_WARNING, "[EventMgr] Failed to push event: %d\n", -ret);
       return VELAWEAR_ERR_IO;
     }
 
@@ -237,14 +274,14 @@ int event_manager_pop(velawear_events_t *events, velawear_event_t *event,
   struct timespec timeout;
   uintptr_t message;
   ssize_t nbytes;
+  int slot;
 
-  if (events->queue == (mqd_t)-1 || event == NULL)
+  if (events == NULL || !events->queue_open || event == NULL)
     {
       return VELAWEAR_ERR_IO;
     }
 
   /* Calculate timeout */
-
   clock_gettime(CLOCK_REALTIME, &timeout);
   timeout.tv_sec += timeout_ms / 1000;
   timeout.tv_nsec += (timeout_ms % 1000) * 1000000;
@@ -254,11 +291,11 @@ int event_manager_pop(velawear_events_t *events, velawear_event_t *event,
       timeout.tv_nsec -= 1000000000;
     }
 
-  nbytes = mq_timedreceive(events->queue, (char *)&message,
-                           sizeof(message), NULL, &timeout);
+  nbytes = file_mq_timedreceive(&events->queue, (char *)&message,
+                                sizeof(message), NULL, &timeout);
   if (nbytes < 0)
     {
-      if (errno == ETIMEDOUT)
+      if (nbytes == -ETIMEDOUT)
         {
           return VELAWEAR_ERR_TIMEOUT;
         }
@@ -266,13 +303,24 @@ int event_manager_pop(velawear_events_t *events, velawear_event_t *event,
       return VELAWEAR_ERR_IO;
     }
 
-  if (nbytes != sizeof(message) || message == 0)
+  if (nbytes != sizeof(message) || message == 0 ||
+      message > EVENT_POOL_SIZE)
     {
       return VELAWEAR_ERR_IO;
     }
 
-  memcpy(event, (const void *)message, sizeof(*event));
-  free((void *)message);
+  slot = (int)message - 1;
+  pthread_mutex_lock(&events->pool_lock);
+  if (!events->pool_used[slot])
+    {
+      pthread_mutex_unlock(&events->pool_lock);
+      return VELAWEAR_ERR_IO;
+    }
+
+  memcpy(event, &events->pool[slot], sizeof(*event));
+  events->pool_used[slot] = false;
+  pthread_mutex_unlock(&events->pool_lock);
+
   return VELAWEAR_OK;
 }
 

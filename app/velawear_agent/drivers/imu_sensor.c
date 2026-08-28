@@ -29,11 +29,13 @@
 /* The Huangshan Pi board registers the LSM6DSL as /dev/lsm6dsl0. */
 #define IMU_DEVICE_PATH         "/dev/lsm6dsl0"
 
-/* Default thresholds (in m/s^2) */
+/* Motion thresholds are based on dynamic acceleration in g. */
 
-#define DEFAULT_MOVE_THRESHOLD  0.5f
-#define DEFAULT_RUN_THRESHOLD   2.0f
+#define DEFAULT_MOVE_THRESHOLD  0.15f
+#define DEFAULT_RUN_THRESHOLD   0.35f
 #define DEFAULT_FALL_THRESHOLD  15.0f
+
+#define GRAVITY_FILTER_ALPHA    0.05f
 
 #define FALL_FREEFALL_THRESHOLD 0.5f
 #define FALL_IMPACT_THRESHOLD   8.0f
@@ -140,9 +142,38 @@ static void update_motion_state(imu_sensor_t *imu, imu_data_t *data)
   float accel_mag = calculate_magnitude(data->accel_x,
                                         data->accel_y,
                                         data->accel_z);
+  float dynamic_x;
+  float dynamic_y;
+  float dynamic_z;
+  float dynamic_mag;
   float gyro_mag = calculate_magnitude(data->gyro_x,
                                        data->gyro_y,
                                        data->gyro_z);
+
+  /* Remove the slowly changing gravity vector before deciding activity.
+   * A stationary board reports about 1g, which must not count as motion. */
+
+  if (!imu->gravity_valid)
+    {
+      imu->gravity_x = data->accel_x;
+      imu->gravity_y = data->accel_y;
+      imu->gravity_z = data->accel_z;
+      imu->gravity_valid = true;
+    }
+  else
+    {
+      imu->gravity_x += GRAVITY_FILTER_ALPHA *
+                        (data->accel_x - imu->gravity_x);
+      imu->gravity_y += GRAVITY_FILTER_ALPHA *
+                        (data->accel_y - imu->gravity_y);
+      imu->gravity_z += GRAVITY_FILTER_ALPHA *
+                        (data->accel_z - imu->gravity_z);
+    }
+
+  dynamic_x = data->accel_x - imu->gravity_x;
+  dynamic_y = data->accel_y - imu->gravity_y;
+  dynamic_z = data->accel_z - imu->gravity_z;
+  dynamic_mag = calculate_magnitude(dynamic_x, dynamic_y, dynamic_z);
 
   /* Confirm a fall only after freefall, impact, and post-impact stillness. */
 
@@ -150,7 +181,7 @@ static void update_motion_state(imu_sensor_t *imu, imu_data_t *data)
 
   /* Check for running (high acceleration + gyro) */
 
-  if (accel_mag > imu->threshold_run && gyro_mag > 1.0f)
+  if (dynamic_mag > imu->threshold_run && gyro_mag > 1.0f)
     {
       imu->motion.is_running = true;
       imu->motion.is_moving = true;
@@ -159,7 +190,7 @@ static void update_motion_state(imu_sensor_t *imu, imu_data_t *data)
     }
   /* Check for moving (moderate acceleration) */
 
-  else if (accel_mag > imu->threshold_move)
+  else if (dynamic_mag > imu->threshold_move)
     {
       imu->motion.is_moving = true;
       imu->motion.is_running = false;
@@ -177,7 +208,7 @@ static void update_motion_state(imu_sensor_t *imu, imu_data_t *data)
         }
     }
 
-  imu->motion.motion_intensity = accel_mag;
+  imu->motion.motion_intensity = dynamic_mag;
 }
 
 /****************************************************************************
