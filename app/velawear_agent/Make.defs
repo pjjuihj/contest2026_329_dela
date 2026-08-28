@@ -1,0 +1,3 @@
+ifneq ($(CONFIG_LVX_USE_DEMO_CONTEST2026_329_VELAWEAR_AGENT),)
+CONFIGURED_APPS += $(APPDIR)/demos/contest2026_329_velawear_agent
+endif
