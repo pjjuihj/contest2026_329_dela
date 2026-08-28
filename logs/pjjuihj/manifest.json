@@ -3,7 +3,7 @@
   "team_id": "contest2026_329_dela",
   "github_login": "pjjuihj",
   "generator": "claude-code-collector@1.2.0",
-  "updated_at": "2026-08-04T11:55:49.728Z",
+  "updated_at": "2026-08-15T11:19:13.400Z",
   "sessions": [
     {
       "session_id": "9ed2261d-211f-409e-bfd4-9825c46d0ca4",
@@ -16,6 +16,55 @@
       "collection_mode": "cli",
       "health": "ok",
       "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "8d451f53-841b-496e-a0ff-1760f643e751",
+      "tool": "claude-code",
+      "started_at": "2026-08-14T14:04:37.894Z",
+      "last_event_at": "2026-08-15T06:06:59.968Z",
+      "event_count": 921,
+      "raw_event_count": 1401,
+      "file_path": "logs/pjjuihj/2026-08-15/claude-code__8d451f53-841b-496e-a0ff-1760f643e751.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "9b817448-eaef-47c3-a08b-397b71600687",
+      "tool": "claude-code",
+      "started_at": "2026-08-14T15:00:33.868Z",
+      "last_event_at": "2026-08-15T03:26:30.880Z",
+      "event_count": 1655,
+      "raw_event_count": 2538,
+      "file_path": "logs/pjjuihj/2026-08-15/claude-code__9b817448-eaef-47c3-a08b-397b71600687.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "d833c4d2-614c-4b24-9bd1-e75a2cdae683",
+      "tool": "claude-code",
+      "started_at": "2026-08-15T06:10:42.752Z",
+      "last_event_at": "2026-08-15T07:04:01.612Z",
+      "event_count": 523,
+      "raw_event_count": 786,
+      "file_path": "logs/pjjuihj/2026-08-15/claude-code__d833c4d2-614c-4b24-9bd1-e75a2cdae683.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "f7b6f300-fb20-405b-b863-157a4f8b0cce",
+      "tool": "claude-code",
+      "started_at": "2026-08-15T05:11:26.551Z",
+      "last_event_at": "2026-08-15T11:19:13.387Z",
+      "event_count": 551,
+      "raw_event_count": 844,
+      "file_path": "logs/pjjuihj/2026-08-15/claude-code__f7b6f300-fb20-405b-b863-157a4f8b0cce.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "mimo-v2.5-pro",
+      "redacted_count_total": 1
     }
   ]
 }
