@@ -1,0 +1,31 @@
+VelaWear SF32LB52 hardware-in-the-loop evidence
+Date: 2026-08-29 (Asia/Shanghai)
+
+Image provenance
+- Source tree: /home/cmj/桌面/1/contest2026_329_dela/openvela
+- Branch: dev-ai-contest-2026
+- Target: lckfb_huangshan_pi
+- Build output: cmake_out/lckfb_huangshan_pi/nuttx.bin
+- Size: 5,994,200 bytes
+- SHA-256: aecf2ed93e00c0395d78d576977d9d200b50d6f99fa79690e9de37c83d9cfe70
+
+Flash
+- Tool: /usr/local/bin/sftool
+- Port: /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0
+- Baud: 1,000,000
+- Address: 0x12010000
+- Options: --compat true, --verify, --no-compress
+- Result: exit code 0; soft reset completed
+
+Cold boot at 1 Mbps
+- VelaWear reached nsh and started successfully.
+- LCD /dev/lcd0 and touch /dev/input0 opened successfully.
+- BLE HCI commands 0x2006, 0x2008, 0x2009, and 0x200a returned status 0x00.
+- Advertising started; GATT service registered.
+- Continuous MEMS capture started at 16,000 Hz; 32,000-sample DMA probe completed.
+- Custom Skill installed at /data/agent/skills/velawear-wellness.md.
+
+Independent Windows RF/GATT regression
+- Adapter: present; central/peripheral enabled; radio ON.
+- Address: CD:AB:78:56:34:12; matching service: 12345678-9abc-def0-1234-56789abcdef0.
+- WinRT scan observed VelaWear at RSSI -22 to -28 dBm.
