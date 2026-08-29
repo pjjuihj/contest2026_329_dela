@@ -34,7 +34,7 @@
 | Apache 2.0 许可 | 已补充根许可证，待最终审阅 | 正式仓根目录已加入 Apache 2.0 `LICENSE`；提交前确认新增/改动文件的版权头和第三方来源说明。 |
 | 代码源与实际构建源一致 | 常规源文件一致，新增运行时修复已纳入构建 | 正式仓 `app/velawear_agent` 与实际 CMake 演示链接目标的 44 个非备份源文件逐文件哈希一致；本次 Ninja 生成了新镜像。提交前排除 `.orig/.rej/.before-*/.bak`。 |
 | 独立作品介绍文档 | 已补充，待最终校对 | 已加入 `docs/submission/velawear_project_introduction.pdf` 及 Markdown 源稿；内容基于已验证证据，提交前仍需结合最终实机演示校对。 |
-| 不超过 5 分钟演示视频 | 未发现 | 仓库中没有 `.mp4/.mov/.mkv/.avi`；需录制并提交。 |
+| 不超过 5 分钟演示视频 | 待人工录制，脚本已准备 | 仓库中暂未放置视频文件；已加入 `docs/submission/velawear_demo_script.md`，需按脚本录制并提交不超过 5 分钟的视频。 |
 | GitHub fork/PR/review/合入 | 日志、源码和文档已提交并推送，PR #6 待检查合入 | HIL 日志提交 `22115e6`、源码提交 `cf62211`、证据与文档提交 `0f13ccb` 已推到 fork 分支 `codex/velawear-hil-2026-08-29`；已用合并提交 `7de3189` 解决官方基线冲突，PR #6 待完成检查、自审和合入。 |
 | vendor_sifli 板级修改提交 | 未完成 | Agent/VelaWear defconfig 修改仍在 VM 的 vendor 工作树；需按指南在对应公共仓 fork + PR，或按组委会要求提交板级补丁。 |
 
