@@ -59,3 +59,13 @@ Local Mock LLM BLE round trip (2026-08-29, Asia/Shanghai)
 - Concurrent 1 Mbps UART snapshot captured VelaWear boot, BLE advertising, and connected err=0x00.
 - This is a local protocol/HIL proof only. It does not prove the contest-required team-maintained server, a real cloud LLM conversation, visible LCD rendering, physical touch, audible speaker output, voice wakeword, or the required demo video.
 
+
+
+SHOW_REMINDER Agent command round trip (2026-08-29, Asia/Shanghai)
+- Board image: known-good control image, nuttx.bin SHA-256 773d09a15be2cc469aefeed4037adf37250e29124a612af68809a62110718f16; no firmware changes were made for this test.
+- The Windows BLE bridge connected to CD:AB:78:56:34:12 with trigger_reminder enabled and sent Agent command sequence 1, command id 3 (SHOW_REMINDER), argument 2 (REST).
+- Concurrent 1 Mbps UART evidence: [BLE] Agent command queued: seq=1 id=3; [BLE] Agent command handled: seq=1 id=3 result=0.
+- The board generated one LLM request for "AI 建议：休息一下"; the loopback OpenAI-compatible Mock endpoint returned "现在休息一下，喝口水吧。".
+- Concurrent 1 Mbps UART evidence: [BLE] LLM response accepted: seq=1 status=0 bytes=36; [LLM] request=1 cloud_bridge connected=1; [Display] Companion phase=0 text_bytes=36; [Action] LLM response delivered.
+- The bridge observed one completed Mock HTTP request and stopped after the response. This proves the Agent command, LLM request, BLE response, and software display-state transition path.
+- The display-state log is not proof of human-visible LCD output; the loopback Mock is not the contest-required team-maintained server or a real cloud conversation. Physical display, audio, Skill tool execution, scheduled/proactive Skill behavior, and voice wakeword remain unverified.
