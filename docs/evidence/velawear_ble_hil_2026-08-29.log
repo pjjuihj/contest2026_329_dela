@@ -1,31 +1,44 @@
-VelaWear SF32LB52 hardware-in-the-loop evidence
+VelaWear SF32LB52 hardware-in-the-loop evidence (rerun)
 Date: 2026-08-29 (Asia/Shanghai)
 
 Image provenance
-- Source tree: /home/cmj/桌面/1/contest2026_329_dela/openvela
-- Branch: dev-ai-contest-2026
-- Target: lckfb_huangshan_pi
-- Build output: cmake_out/lckfb_huangshan_pi/nuttx.bin
-- Size: 5,994,200 bytes
-- SHA-256: aecf2ed93e00c0395d78d576977d9d200b50d6f99fa79690e9de37c83d9cfe70
+- Formal source commits: cf62211 and 0f13ccb; submission PR head: 18154ac.
+- Target: lckfb_huangshan_pi; Ninja completed 38/38.
+- Build output: cmake_out/lckfb_huangshan_pi/nuttx.bin.
+- Size: 5,994,568 bytes.
+- SHA-256: 71be9a043790408bdf5121dcd0ad09492d2483cfb5d55894f2c2b03350251ad9.
+- final_nuttx: 37,851,268 bytes; SHA-256 b229c3ee3778510990963ef2e770bc36f066e21d90f43d4595ecbe86d47cf45c.
+- System.map: 339,604 bytes; SHA-256 b7436b1997528284aa643c4b77077ab5a5a0137f553fb1a1a58fd137086793a0.
+- The temporary build mirror was synchronized to the formal font file for this build; the user's uncommitted font was restored immediately afterward.
 
 Flash
-- Tool: /usr/local/bin/sftool
-- Port: /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0
-- Baud: 1,000,000
-- Address: 0x12010000
-- Options: --compat true, --verify, --no-compress
-- Result: exit code 0; soft reset completed
+- Tool: /usr/local/bin/sftool.
+- Port: /dev/ttyUSB0; the by-id alias was transient between SSH sessions.
+- Baud: 1,000,000; address: 0x12010000.
+- Options: --compat true, --verify, --no-compress.
+- Result: exit code 0; 100% written, verify completed, soft reset completed.
 
 Cold boot at 1 Mbps
-- VelaWear reached nsh and started successfully.
+- VelaWear reached nsh and Agent started successfully.
 - LCD /dev/lcd0 and touch /dev/input0 opened successfully.
 - BLE HCI commands 0x2006, 0x2008, 0x2009, and 0x200a returned status 0x00.
-- Advertising started; GATT service registered.
+- Advertising started; GATT service registered; BLE identity CD:AB:78:56:34:12.
 - Continuous MEMS capture started at 16,000 Hz; 32,000-sample DMA probe completed.
 - Custom Skill installed at /data/agent/skills/velawear-wellness.md.
+- Initial PAN attempt reported 0x04, then the regression session correlated connected err=0x00.
+- Cloud remained disconnected and the device correctly stayed in independent/degrade mode.
 
 Independent Windows RF/GATT regression
 - Adapter: present; central/peripheral enabled; radio ON.
-- Address: CD:AB:78:56:34:12; matching service: 12345678-9abc-def0-1234-56789abcdef0.
-- WinRT scan observed VelaWear at RSSI -22 to -28 dBm.
+- WinRT scan observed VelaWear at address CDAB78563412, RSSI -20 dBm.
+- Matching service: 12345678-9abc-def0-1234-56789abcdef0.
+- GATT JSON: service_status=0, service_count=3, all five characteristic statuses=0, status_read=000000, CCCD=0, notifications=[000000].
+- UART trigger/session: connected err=0x00; HIL script reported [3/3] completed.
+
+Host/protocol checks
+- Windows companion UI and LLM bridge tests: 30 tests, OK.
+- Agent protocol tests: agent protocol tests passed.
+
+Acceptance boundary
+- This log proves build/flash, boot, RF visibility, GATT/CCCD/notification, and UART correlation.
+- It does not prove visible LCD content, physical touch behavior, audible speaker output, a valid cloud LLM conversation, voice wakeword, or the contest video/document requirements.

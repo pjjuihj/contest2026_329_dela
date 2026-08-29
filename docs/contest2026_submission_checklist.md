@@ -22,7 +22,7 @@
 | 比赛要求 | 当前状态 | 证据或剩余工作 |
 | --- | --- | --- |
 | 基于 openvela + ai_agent | 代码/构建/板端启动通过 | .config 含 CONFIG_EXAMPLES_AI_AGENT_VELA=y；修复版 ai_agent 冷启动进入 AI Agent ready 与 vela>，最终 ELF 有 ai_agent_main、skill_loader_init、velawear_main、XiaoZhi 入口和 velawear_skill_install。 |
-| 在指定硬件上编译并烧录 | 已烧录、校验并冷启动 | 当前 nuttx.bin（5,994,200 bytes，SHA-256 `aecf2ed93e00c0395d78d576977d9d200b50d6f99fa79690e9de37c83d9cfe70`）以 1,000,000 波特率写入 `0x12010000`，`--verify` 通过并软复位；串口看到 SFBL、nsh>、VelaWear 初始化和 Agent started successfully。 |
+| 在指定硬件上编译并烧录 | 已烧录、校验并冷启动 | 当前 nuttx.bin（5,994,568 bytes，SHA-256 `71be9a043790408bdf5121dcd0ad09492d2483cfb5d55894f2c2b03350251ad9`）以 1,000,000 波特率写入 `0x12010000`，`--verify` 通过并软复位；串口看到 SFBL、nsh>、VelaWear 初始化和 Agent started successfully。 |
 | 配置 LLM 后端、基础对话 | 未完成 | 板端 config_show 显示 API key、LLM host/path 均未设置，网络为 disconnected / 0.0.0.0；XiaoZhi 连 api.tenclass.net:443 返回 -0x0052。需接入可用网络、配置真实后端/团队服务凭据，并完成一轮基础对话。 |
 | 至少一个交互渠道 | CLI 板端启动通过，真实对话未完成 | 板端已从 nsh> 启动 Agent，XiaoZhi worker 运行并等待 PAN peer；云端仍未连接，尚无有效问答或语音闭环。 |
 | 至少一个自定义 Skill | 文件安装通过，执行演示未完成 | 板端日志确认 /data/agent/skills/velawear-wellness.md 已安装，/skill 请求已送入 CLI；因无网络且 Agent loop 未启动，尚未得到 Skill 列表回复或实际执行结果，仍需联网后完成演示。 |
@@ -44,9 +44,9 @@
 构建命令：ninja -C cmake_out/lckfb_huangshan_pi -j4
 结果：后台构建 status=0；`nuttx`、`first_link`、`second_link` 和 `final_nuttx` 均生成，未出现编译错误。`ninja -t commands` 已确认修复后的 packages/ai_agent/src/agent_main.c 进入实际编译命令。
 
-- nuttx.bin：5,994,200 bytes；SHA-256：aecf2ed93e00c0395d78d576977d9d200b50d6f99fa79690e9de37c83d9cfe70
-- final_nuttx：37,847,000 bytes；SHA-256：f207577cfb348cc27e76592d82278eba9e7fa5c940fa1b673b65bdba00e88bc9
-- System.map：337,043 bytes；SHA-256：9f5985e1d13f1984cafba776b4cfd30d07b78cf9619bd09297fc4891cff032fb
+- nuttx.bin：5,994,568 bytes；SHA-256：71be9a043790408bdf5121dcd0ad09492d2483cfb5d55894f2c2b03350251ad9
+- final_nuttx：37,851,268 bytes；SHA-256：b229c3ee3778510990963ef2e770bc36f066e21d90f43d4595ecbe86d47cf45c
+- System.map：339,604 bytes；SHA-256：b7436b1997528284aa643c4b77077ab5a5a0137f553fb1a1a58fd137086793a0
 - final_nuttx 中已找到：ai_agent_main、skill_loader_init、velawear_main、velawear_skill_install、xiaozhi_*、bt_id_get_mc、popen、pclose、system。
 
 ## 硬件复验顺序
