@@ -36,7 +36,7 @@
 | 独立作品介绍文档 | 已补充，待最终校对 | 已加入 `docs/submission/velawear_project_introduction.pdf` 及 Markdown 源稿；内容基于已验证证据，提交前仍需结合最终实机演示校对。 |
 | 不超过 5 分钟演示视频 | 待人工录制，脚本已准备 | 仓库中暂未放置视频文件；已加入 `docs/submission/velawear_demo_script.md`，需按脚本录制并提交不超过 5 分钟的视频。 |
 | GitHub fork/PR/review/合入 | 日志、源码和文档已提交并推送，PR #6 待检查合入 | HIL 日志提交 `22115e6`、源码提交 `cf62211`、证据与文档提交 `0f13ccb` 已推到 fork 分支 `codex/velawear-hil-2026-08-29`；已用合并提交 `7de3189` 解决官方基线冲突，PR #6 待完成检查、自审和合入。 |
-| vendor_sifli 板级修改提交 | 未完成 | Agent/VelaWear defconfig 修改仍在 VM 的 vendor 工作树；需按指南在对应公共仓 fork + PR，或按组委会要求提交板级补丁。 |
+| vendor_sifli 板级修改提交 | 待公共仓独立 PR，清单已整理 | 候选文件、基线、备份排除项和提交门槛已记录在 `docs/submission/vendor_sifli_submission_manifest.md`；当前尚无 `pjjuihj/vendor_sifli` fork，需独立授权后按公共仓流程提交。 |
 
 ## 可复现构建证据
 
