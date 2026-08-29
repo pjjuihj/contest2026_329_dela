@@ -42,3 +42,11 @@ Host/protocol checks
 Acceptance boundary
 - This log proves build/flash, boot, RF visibility, GATT/CCCD/notification, and UART correlation.
 - It does not prove visible LCD content, physical touch behavior, audible speaker output, a valid cloud LLM conversation, voice wakeword, or the contest video/document requirements.
+
+Regression isolation rerun (2026-08-29, Asia/Shanghai)
+- The formal VM repository had an uncommitted 119-line change in app/velawear_agent/drivers/velawear_pan.c. Its SHA-256 was 93f186a77f0c57b2c15efd97573aecad09879aee33b2e424cd9986a862575a0e.
+- That change added Classic PAN visibility/name/class setup after BLE initialization. The corresponding image was 5,995,912 bytes with SHA-256 88736123a7191542e0b875d12e116dacbd76796df898a56133d1433bcd92f960. Two independent Windows scans found no VelaWear and matching_service=0; the BLE HIL stopped before CCCD enablement.
+- For the A/B control, the formal branch version of velawear_pan.c was built in the same Ninja process. The build source SHA-256 was 0c3a202b066470834a46b88093f1ae957fbfe6bddab03d959b650593e1dc241d; the object contained no Classic PAN strings; nuttx.bin was 5,994,568 bytes with SHA-256 773d09a15be2cc469aefeed4037adf37250e29124a612af68809a62110718f16.
+- The control image was flashed at 1,000,000 baud to 0x12010000 with verify. Cold boot returned BLE HCI status 0x00 for 0x2006, 0x2008, 0x2009, and 0x200a and printed advertising start ret=0.
+- Windows then observed VelaWear at CDAB78563412 with RSSI -24 to -30 dBm, matching_service=7. The full HIL completed with service_status=0, all five characteristic statuses=0, cccd_status=0, threshold_before=100e, threshold_after=100e, and notifications=[000000].
+- Conclusion: the BLE regression is reproduced and isolated to the uncommitted Classic PAN app change in combination with the current SiFli Bluetooth HCI adapter. The known-good control image remains on the board; the uncommitted change was not added to this submission PR.
