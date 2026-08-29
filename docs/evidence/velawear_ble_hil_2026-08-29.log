@@ -50,3 +50,12 @@ Regression isolation rerun (2026-08-29, Asia/Shanghai)
 - The control image was flashed at 1,000,000 baud to 0x12010000 with verify. Cold boot returned BLE HCI status 0x00 for 0x2006, 0x2008, 0x2009, and 0x200a and printed advertising start ret=0.
 - Windows then observed VelaWear at CDAB78563412 with RSSI -24 to -30 dBm, matching_service=7. The full HIL completed with service_status=0, all five characteristic statuses=0, cccd_status=0, threshold_before=100e, threshold_after=100e, and notifications=[000000].
 - Conclusion: the BLE regression is reproduced and isolated to the uncommitted Classic PAN app change in combination with the current SiFli Bluetooth HCI adapter. The known-good control image remains on the board; the uncommitted change was not added to this submission PR.
+
+Local Mock LLM BLE round trip (2026-08-29, Asia/Shanghai)
+- Board image: known-good control image, nuttx.bin SHA-256 773d09a15be2cc469aefeed4037adf37250e29124a612af68809a62110718f16; no firmware changes were made for this test.
+- Host bridge: Windows VelaWear LLM bridge connected to BLE identity CD:AB:78:56:34:12 and sent one CHAT_INPUT message: "今天有点累，陪我聊两句".
+- Mock service: a loopback OpenAI-compatible HTTP endpoint returned "今天也要记得休息和喝水。" exactly once; the bridge reported bridge_exit=0.
+- Mock request body used model mock-velawear and contained the board-originated prompt; this confirms the board request reached the host bridge and the response was written back over BLE.
+- Concurrent 1 Mbps UART snapshot captured VelaWear boot, BLE advertising, and connected err=0x00.
+- This is a local protocol/HIL proof only. It does not prove the contest-required team-maintained server, a real cloud LLM conversation, visible LCD rendering, physical touch, audible speaker output, voice wakeword, or the required demo video.
+
